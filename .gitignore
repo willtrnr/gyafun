@@ -1,0 +1,6 @@
+*.out
+*.py[cod]
+*.swp
+__pycache__/
+venv/
+~*

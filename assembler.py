@@ -16,7 +16,7 @@ class Argument(Enum):
 
 OPS = {o[3:]: opcodes.__dict__[o] for o in dir(opcodes) if o.startswith('OP_')}
 
-NUM_LIT = r'0x[0-9A-F]+|[0-9A-F]h|[0-9]d?'
+NUM_LIT = r'0x[0-9A-F]+|[0-9A-F]+h|[0-9]+d?'
 STR_LIT = r'"((?:\\"|.)*?)"'
 IDENT = r'\.?[A-Za-z][A-Za-z0-9_\.]*'
 
@@ -128,15 +128,17 @@ def assemble(stmts, pool=dict()):
                 elif arg[0] == Argument.IDENT:
                     if (symbol, arg[1]) in labels:
                         buf += labels[symbol, arg[1]].to_bytes(2, byteorder='little')
-                    elif (Constant.VALUE, (symbol, arg[1]) if arg[1].startswith('.') else arg[1]) in pool:
-                        buf += pool[Constant.VALUE, (symbol, arg[1]) if arg[1].startswith('.') else arg[1]].to_bytes(2, byteorder='little')
-                    elif (Constant.CODE, (symbol, arg[1]) if arg[1].startswith('.') else arg[1]) in pool:
-                        buf += pool[Constant.CODE, (symbol, arg[1]) if arg[1].startswith('.') else arg[1]].to_bytes(2, byteorder='little')
                     else:
-                        pool[Constant.CODE, arg[1]] = code_idx
-                        yield ((Constant.CODE, code_idx), (True, arg[1]))
-                        buf += code_idx.to_bytes(2, byteorder='little')
-                        code_idx += 1
+                        name = (symbol, arg[1]) if arg[1].startswith('.') else arg[1]
+                        if (Constant.VALUE, name) in pool:
+                            buf += pool[Constant.VALUE, name].to_bytes(2, byteorder='little')
+                        elif (Constant.CODE, name) in pool:
+                            buf += pool[Constant.CODE, name].to_bytes(2, byteorder='little')
+                        else:
+                            pool[Constant.CODE, arg[1]] = code_idx
+                            yield ((Constant.CODE, code_idx), (True, arg[1]))
+                            buf += code_idx.to_bytes(2, byteorder='little')
+                            code_idx += 1
         idx = pool[Constant.CODE, symbol]
         yield ((Constant.CODE, idx), (False, buf))
         yield ((Constant.SYMBOL, symbol), (Constant.CODE, idx))
@@ -151,4 +153,5 @@ if __name__ == '__main__':
             for part in assemble(read_stmts(read_lines(sys.argv[1:]))):
                 print(part)
                 parts.append(part)
+            # TODO make an actual binary file format
             pickle.dump(parts, f)

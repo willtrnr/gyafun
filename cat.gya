@@ -1,0 +1,95 @@
+;; Try implementing a basic cat
+
+open: native io.fopen
+read: native io.fread
+close: native io.fclose
+print: native io.print
+
+main:
+
+  $argc 0
+  $argv 1
+  $idx 2
+  $file 3
+
+  ;; Check if we have enough args
+  LDL $argc
+  .min_args: 2
+  LDC .min_args
+  ILT .show_usage
+
+  ;; Loop args
+  ST1 $idx
+  .loop:
+    LDL $idx
+    LDL $argc
+    IEQ .end
+
+    ;; Get the file name
+    LDL $argv
+    LDL $idx
+    IVK arr.at 2 ; Should make array opcodes
+
+    ;; Open the file for reading
+    .mode: "r"
+    LDC .mode
+    IVK open 2
+    STL $file
+
+    ;; If not open goto error
+    LDL $file
+    IIN .error_not_open
+
+    ;; It was indeed open, loop and print
+    .read_loop:
+      ;; Read chunk from file
+      LDL $file
+      .chunk_size: 1024
+      LDC .chunk_size
+      IVK read 2
+      DUP
+
+      ;; Check if data was read
+      IIN .read_end
+
+      ;; Print chunk
+      IVK print 1
+      POP
+
+      JMP .read_loop
+    .read_end:
+
+    POP
+
+    ;; Close file
+    LDL $file
+    IVK close 1
+    POP
+
+    ;; Increment index
+    LDL $idx
+    LD1
+    ADD
+    STL $idx
+
+    JMP .loop
+  .end:
+
+  LD0
+  RET
+
+  .show_usage:
+    .usage: "Usage: cat <FILE> [FILE [FILE [...]]]"
+    LDC .usage
+    IVK io.println 1
+    POP
+    LD1
+    RET
+
+  .error_not_open:
+    .not_open: "File not found or not readable"
+    LDC .not_open
+    IVK io.println 1
+    POP
+    LD1
+    RET

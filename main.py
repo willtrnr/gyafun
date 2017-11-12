@@ -8,9 +8,11 @@ if __name__ == '__main__':
         print('Usage: {} FILE'.format(sys.argv[0]))
         sys.exit(1)
     else:
+        args = sys.argv[1:]
         with open(sys.argv[1], 'rb') as f:
+            # TODO implement an actual binary format
             pool = pickle.load(f)
-            vm = Machine(dict(pool))
-            ret = vm.run('main', len(sys.argv) - 1, sys.argv[1:])
+            vm = Machine(dict(pool), verbose=False)
+            ret = vm.run('main', len(args), args)
             if isinstance(ret, int):
                 sys.exit(ret)

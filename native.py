@@ -46,7 +46,3 @@ def io_fclose(frame, machine, f):
     f.close()
     frame.push_operand(None)
 handlers['io.fclose'] = io_fclose
-
-def arr_at(frame, machine, arr, idx):
-    frame.push_operand(arr[idx])
-handlers['arr.at'] = arr_at

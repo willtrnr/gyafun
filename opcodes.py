@@ -20,35 +20,40 @@ OP_STL = 0x0B # Pop stack and set value in local slot
 OP_POP = 0x0C # Pop and discard
 OP_DUP = 0x0D # Pop stack and push the value twice
 
+# Arrays
+OP_ANW = 0x0E # Pop value and make new array of value length
+OP_ASZ = 0x0F # Pop value as array and push size or array
+OP_ALD = 0x10 # Pop 2 values for array and index and push value at index
+OP_AST = 0x11 # Pop 3 value for array, index and value and set value at index
+
 # Bitwise
-OP_BND = 0x0E # &
-OP_BOR = 0x0F # |
-OP_BXR = 0x10 # ^
-OP_BNT = 0x11 # ~
-OP_BLS = 0x12 # Left shift
-OP_BRS = 0x13 # Right shift
+OP_BND = 0x12 # &
+OP_BOR = 0x13 # |
+OP_BXR = 0x14 # ^
+OP_BNT = 0x15 # ~
+OP_BLS = 0x16 # Left shift
+OP_BRS = 0x17 # Right shift
 
 # Arithmetics
-OP_ADD = 0x14 # Pop 2 values and push sum
-OP_SUB = 0x15 # Pop 2 values and push difference
-OP_MUL = 0x16 # Pop 2 values and push product
-OP_DIV = 0x17 # Pop 2 values and push quotient
-OP_MOD = 0x18 # Pop 2 values and push remainder
-OP_NEG = 0x19 # Pop value and push negation
-OP_CMP = 0x1A # Pop 2 values and push 0 is equal, 1 if greater and -1 otherwise
-OP_INC = 0x1B # Pop value, increment by n and push result
-OP_DEC = 0x1C # Pop value, decrement by n and push result
+OP_ADD = 0x18 # Pop 2 values and push sum
+OP_SUB = 0x19 # Pop 2 values and push difference
+OP_MUL = 0x1A # Pop 2 values and push product
+OP_DIV = 0x1B # Pop 2 values and push quotient
+OP_MOD = 0x1C # Pop 2 values and push remainder
+OP_NEG = 0x1D # Pop value and push negation
+OP_INC = 0x1E # Pop value, increment by n and push result
+OP_DEC = 0x1F # Pop value, decrement by n and push result
 
 # Jumps
-OP_JMP = 0x1D # Jump to instruction
-OP_IVK = 0x1E # Pop n values and invoke subroutine setting up a new stack frame with popped values as locals
+OP_JMP = 0x20 # Jump to instruction
+OP_IVK = 0x21 # Pop n values and invoke subroutine setting up a new stack frame with popped values as locals
 
 # Branching
-OP_IZR = 0x1F # Pop value and if equal to 0 jump to address
-OP_INZ = 0x20 # Pop value and if not equal to 0 jump to address
-OP_IEQ = 0x21 # Pop 2 values and if equal jump to program address
-OP_INE = 0x22 # Pop 2 values and if not equal jump to program address
-OP_ILT = 0x23 # Pop 2 values and if first is less then second jump to program address
-OP_IGT = 0x24 # Pop 2 values and if first is greater then second jump to program address
-OP_IIN = 0x25 # Pop 1 value and if null jump to program address
-OP_INN = 0x26 # pop 1 value and if not null jump to program address
+OP_IZR = 0x22 # Pop value and if equal to 0 jump to address
+OP_INZ = 0x23 # Pop value and if not equal to 0 jump to address
+OP_IEQ = 0x24 # Pop 2 values and if equal jump to program address
+OP_INE = 0x25 # Pop 2 values and if not equal jump to program address
+OP_ILT = 0x26 # Pop 2 values and if first is less then second jump to program address
+OP_IGT = 0x27 # Pop 2 values and if first is greater then second jump to program address
+OP_IIN = 0x28 # Pop 1 value and if null jump to program address
+OP_INN = 0x29 # pop 1 value and if not null jump to program address

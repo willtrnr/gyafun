@@ -22,7 +22,7 @@ main:
     ;; Get the file name
     LDL $argv
     LDL $idx
-    IVK arr.at 2 ; TODO Should make array opcodes
+    ALD
 
     ;; Read the file
     IVK read_file 1
@@ -44,7 +44,7 @@ main:
     LDC .usage
     LDL $argv
     LD0
-    IVK arr.at 2
+    ALD
     IVK io.printf 2
     POP
     LD1

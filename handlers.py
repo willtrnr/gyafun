@@ -73,6 +73,31 @@ def dup(frame, machine):
     frame.push_operand(val)
 ops[OP_DUP] = (dup, 0)
 
+# Arrays
+
+def anw(frame, machine):
+    size = frame.pop_operand()
+    frame.push_operand([None] * size)
+ops[OP_ANW] = (anw, 0)
+
+def asz(frame, machine):
+    arr = frame.pop_operand()
+    frame.push_operand(len(arr))
+ops[OP_ASZ] = (asz, 0)
+
+def ald(frame, machine):
+    idx = frame.pop_operand()
+    arr = frame.pop_operand()
+    frame.push_operand(arr[idx])
+ops[OP_ALD] = (ald, 0)
+
+def ast(frame, machine):
+    val = frame.pop_operand()
+    idx = frame.pop_operand()
+    arr = frame.pop_operand()
+    arr[idx] = val
+ops[OP_AST] = (ast, 0)
+
 # Bitwise
 
 def bnd(frame, machine):
@@ -144,17 +169,6 @@ def neg(frame, machine):
     val = frame.pop_operand()
     frame.push_operand(-val)
 ops[OP_NEG] = (neg, 0)
-
-def cmp(frame, machine):
-    a = frame.pop_operand()
-    b = frame.pop_operand()
-    if b > a:
-        frame.push_operand(1)
-    elif b < a:
-        frame.push_operand(-1)
-    else:
-        frame.push_operand(0)
-ops[OP_CMP] = (cmp, 0)
 
 def inc(frame, machine, value):
     val = frame.pop_operand()

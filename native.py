@@ -1,7 +1,13 @@
 handlers = dict()
 
-def native_print(frame, machine, value):
+def io_print(frame, machine, value):
+    print(value, end='')
+    frame.push_operand(None)
+
+handlers['io.print'] = io_print
+
+def io_println(frame, machine, value):
     print(value)
     frame.push_operand(None)
 
-handlers['print'] = native_print
+handlers['io.println'] = io_println

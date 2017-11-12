@@ -19,10 +19,20 @@ def ret(frame, machine):
 
 ops[OP_RET] = (ret, 0)
 
-# Memory management
+# Stack management
 
-def ldc(frame, machine, idx):
-    val = machine.get_constant(Constant.VALUE, idx)
+def ld0(frame, machine):
+    frame.push_operand(0)
+
+ops[OP_LD0] = (ld0, 0)
+
+def ld1(frame, machine):
+    frame.push_operand(1)
+
+ops[OP_LD1] = (ld1, 0)
+
+def ldc(frame, machine, const):
+    val = machine.get_constant(Constant.VALUE, const)
     frame.push_operand(val)
 
 ops[OP_LDC] = (ldc, 1)
@@ -32,6 +42,22 @@ def ldl(frame, machine, idx):
     frame.push_operand(val)
 
 ops[OP_LDL] = (ldl, 1)
+
+def st0(frame, machine, idx):
+    frame.set_slot(idx, 0)
+
+ops[OP_ST0] = (st0, 1)
+
+def st1(frame, machine, idx):
+    frame.set_slot(idx, 1)
+
+ops[OP_ST1] = (st1, 1)
+
+def stc(frame, machine, idx, const):
+    val = machine.get_constant(Constant.VALUE, const)
+    frame.set_slot(idx, val)
+
+ops[OP_STC] = (stc, 2)
 
 def stl(frame, machine, idx):
     val = frame.pop_operand()
@@ -135,6 +161,18 @@ def neg(frame, machine):
 
 ops[OP_NEG] = (neg, 0)
 
+def cmp(frame, machine):
+    a = frame.pop_operand()
+    b = frame.pop_operand()
+    if b > a:
+        frame.push_operand(1)
+    elif b < a:
+        frame.push_operand(-1)
+    else:
+        frame.push_operand(0)
+
+ops[OP_CMP] = (cmp, 0)
+
 # Jumps
 
 def jmp(frame, machine, address):
@@ -147,6 +185,22 @@ def ivk(frame, machine, idx, argc):
     machine.invoke(code, reversed([frame.pop_operand() for x in range(argc)]))
 
 ops[OP_IVK] = (ivk, 2)
+
+# Branching
+
+def izr(frame, machine, address):
+    val = frame.pop_operand()
+    if val == 0:
+        frame.set_pc(address)
+
+ops[OP_IZR] = (izr, 1)
+
+def inz(frame, machine, address):
+    val = frame.pop_operand()
+    if val != 0:
+        frame.set_pc(address)
+
+ops[OP_INZ] = (inz, 1)
 
 def ieq(frame, machine, address):
     a = frame.pop_operand()

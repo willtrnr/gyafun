@@ -1,25 +1,30 @@
 ;; First test program "count" arguments
 
-;; Slot 0 is argc
+io.println: native
 
-LDC 0   ; 0
-STL 1   ; 3
+main:
 
-LDL 0   ; 6
-LDC 0   ; 9
-IEQ 38  ; 12
+  $argc 0
+  $count 1
 
-LDL 1   ; 15
-LDC 1   ; 18
-ADD     ; 21
-STL 1   ; 22
+  ST0 $count
 
-LDL 0   ; 25
-LDC 1   ; 28
-SUB     ; 31
-STL 0   ; 32
+  .loop:
+    LDL $argc
+    IZR .done
 
-JMP 6   ; 35
+    LDL $count
+    LD1
+    ADD
+    STL $count
 
-LDL 1   ; 38
-IVK 1 1 ; 41 Call print
+    LDL $argc
+    LD1
+    SUB
+    STL $argc
+
+    JMP .loop
+  .done:
+
+  LDL $count
+  IVK io.println 1

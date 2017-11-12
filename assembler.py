@@ -62,7 +62,7 @@ def read_stmts(lines):
             elif const.group(4) is not None:
                 yield (Statement.CONST, const.group(1), Constant.VALUE, parse_int(const.group(4)))
             elif const.group(5) is not None:
-                yield (Statement.CONST, const.group(1), Constant.VALUE, const.group(5))
+                yield (Statement.CONST, const.group(1), Constant.VALUE, bytes(const.group(5), 'utf-8').decode('unicode_escape'))
         else:
             label = LABEL_RE.match(line)
             if label:

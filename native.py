@@ -1,18 +1,28 @@
+import os
+import sys
+
 handlers = dict()
 
 def io_print(frame, machine, value):
     if isinstance(value, (bytes, bytearray)):
         value = value.decode('utf-8')
-    print(value, end='')
+    sys.stdout.write(value)
     frame.push_operand(None)
 handlers['io.print'] = io_print
 
 def io_println(frame, machine, value):
     if isinstance(value, (bytes, bytearray)):
         value = value.decode('utf-8')
-    print(value)
+    sys.stdout.write(value + os.linesep)
     frame.push_operand(None)
 handlers['io.println'] = io_println
+
+def io_printf(frame, machine, pattern, *args):
+    if isinstance(pattern, (bytes, bytearray)):
+        pattern = pattern.decode('utf-8')
+    sys.stdout.write(pattern % args)
+    frame.push_operand(None)
+handlers['io.printf'] = io_printf
 
 def io_fopen(frame, machine, path, mode='r'):
     try:

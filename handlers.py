@@ -156,6 +156,16 @@ def cmp(frame, machine):
         frame.push_operand(0)
 ops[OP_CMP] = (cmp, 0)
 
+def inc(frame, machine, value):
+    val = frame.pop_operand()
+    frame.push_operand(val + value)
+ops[OP_INC] = (inc, 1)
+
+def dec(frame, machine, value):
+    val = frame.pop_operand()
+    frame.push_operand(val - value)
+ops[OP_DEC] = (dec, 1)
+
 # Jumps
 
 def jmp(frame, machine, address):

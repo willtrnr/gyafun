@@ -1,16 +1,10 @@
 ;; Try implementing a basic cat
 
-open: native io.fopen
-read: native io.fread
-close: native io.fclose
-print: native io.print
-
 main:
 
   $argc 0
   $argv 1
   $idx 2
-  $file 3
 
   ;; Check if we have enough args
   LDL $argc
@@ -28,48 +22,15 @@ main:
     ;; Get the file name
     LDL $argv
     LDL $idx
-    IVK arr.at 2 ; Should make array opcodes
+    IVK arr.at 2 ; TODO Should make array opcodes
 
-    ;; Open the file for reading
-    .mode: "r"
-    LDC .mode
-    IVK open 2
-    STL $file
-
-    ;; If not open goto error
-    LDL $file
-    IIN .error_not_open
-
-    ;; It was indeed open, loop and print
-    .read_loop:
-      ;; Read chunk from file
-      LDL $file
-      .chunk_size: 1024
-      LDC .chunk_size
-      IVK read 2
-      DUP
-
-      ;; Check if data was read
-      IIN .read_end
-
-      ;; Print chunk
-      IVK print 1
-      POP
-
-      JMP .read_loop
-    .read_end:
-
-    POP
-
-    ;; Close file
-    LDL $file
-    IVK close 1
+    ;; Read the file
+    IVK read_file 1
     POP
 
     ;; Increment index
     LDL $idx
-    LD1
-    ADD
+    INC 1
     STL $idx
 
     JMP .loop
@@ -79,17 +40,61 @@ main:
   RET
 
   .show_usage:
-    .usage: "Usage: cat <FILE> [FILE [FILE [...]]]"
+    .usage: "Usage: %s <FILE> [FILE [FILE [...]]]\n"
     LDC .usage
-    IVK io.println 1
+    LDL $argv
+    LD0
+    IVK arr.at 2
+    IVK io.printf 2
     POP
     LD1
     RET
 
-  .error_not_open:
-    .not_open: "File not found or not readable"
-    LDC .not_open
-    IVK io.println 1
+read_file:
+
+  $path 0
+  $file 1
+
+  ;; Open the file for reading
+  LDL $path
+  .mode: "r"
+  LDC .mode
+  IVK io.fopen 2
+  DUP
+  STL $file
+
+  ;; If not open goto error
+  IIN .error_not_open
+
+  ;; It was indeed open, loop and print
+  .loop:
+    ;; Read chunk from file
+    LDL $file
+    .chunk_size: 1024
+    LDC .chunk_size
+    IVK io.fread 2
+    DUP
+
+    ;; Check if data was read
+    IIN .end
+
+    ;; Print chunk
+    IVK io.print 1
     POP
-    LD1
+
+    JMP .loop
+  .end:
+
+  POP
+
+  ;; Close file
+  LDL $file
+  IVK io.fclose 1
+  RET
+
+  .error_not_open:
+    .open_error: "%s: File not found or not readable\n"
+    LDC .open_error
+    LDL $path
+    IVK io.printf 2
     RET

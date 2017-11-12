@@ -2,12 +2,23 @@
 
 io.println: native
 
+hello: "Hello World"
+
 main:
+  .mult: 5
+
+  IVK say_hello 0
+  POP
 
   $argc 0
   $count 1
 
   ST0 $count
+
+  LDL $argc
+  LDC .mult
+  MUL
+  STL $argc
 
   .loop:
     LDL $argc
@@ -28,3 +39,32 @@ main:
 
   LDL $count
   IVK io.println 1
+  POP
+
+  LD0
+  RET
+
+say_hello:
+  .mult: 3
+
+  $count 0
+  STC $count .mult
+
+  .loop:
+    LDL $count
+    IZR .done
+
+    LDC hello
+    IVK io.println 1
+    POP
+
+    LDL $count
+    LD1
+    SUB
+    STL $count
+
+    JMP .loop
+  .done:
+
+  LDN
+  RET

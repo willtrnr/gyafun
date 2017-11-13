@@ -1,0 +1,57 @@
+;; Hashing function implementations
+
+fnv1a_init: 0xcbf29ce484222325
+
+fnv1a_hash:
+
+  $buf 0
+  $len 1
+  $hval 2
+  $idx 3
+
+  ST0 $idx
+
+  .loop:
+    LDL $idx
+    LDL $len
+    IEQ .end
+
+    ;; hval ^= (Fnv64_t)*bp++;
+    LDL $hval
+    LDL $buf
+    LDL $idx
+    ALD
+    BXR
+    STL $hval
+
+    ;; hval += (hval<<1) + (hval<<4) + (hval<<5) + (hval<<7) + (hval<<8) + (hval<<40);
+    LDL $hval
+    LDL $hval
+    BLS 1
+    ADD
+    LDL $hval
+    BLS 4
+    ADD
+    LDL $hval
+    BLS 5
+    ADD
+    LDL $hval
+    BLS 7
+    ADD
+    LDL $hval
+    BLS 8
+    ADD
+    LDL $hval
+    BLS 40
+    ADD
+    STL $hval
+
+    LDL $idx
+    INC 1
+    STL $idx
+
+    JMP .loop
+  .end:
+
+  LDL $hval
+  RET

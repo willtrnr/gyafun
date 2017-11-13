@@ -1,0 +1,136 @@
+;; Collection of standard functions
+
+parse_hex:
+
+  .base: 16
+
+  .c0: 0x30
+  .c9: 0x39
+  .cA: 0x41
+  .cZ: 0x5A
+  .ca: 0x61
+
+  $value 0
+  $idx 1
+  $len 2
+
+  $res 3
+
+  ST0 $res
+
+  .loop:
+    LDL $idx
+    LDL $len
+    IGE .end
+
+    LDL $value
+    LDL $idx
+    ALD
+
+    DUP
+    LDC .ca
+    ILT .skip_tolower
+      DEC 32
+    .skip_tolower:
+
+    DUP
+    LDC .cA
+    IGE .is_letter
+      DUP
+      LDC .c9
+      IGT .error
+
+      LDC .c0
+      SUB
+      LDL $res
+      LDC .base
+      MUL
+      ADD
+      STL $res
+
+    JMP .next
+
+    .is_letter:
+      DUP
+      LDC .cZ
+      IGT .error
+
+      LDC .cA
+      SUB
+      INC 10
+      LDL $res
+      LDC .base
+      MUL
+      ADD
+      STL $res
+
+    .next:
+
+    LDL $idx
+    INC 1
+    STL $idx
+
+    JMP .loop
+  .end:
+
+  LDL $res
+  RET
+
+  .error:
+    LDN
+    RET
+
+parse_int:
+
+  .base: 10
+
+  .c0: 0x30
+  .c9: 0x39
+
+  $value 0
+  $idx 1
+  $len 2
+
+  $res 3
+
+  ST0 $res
+
+  .loop:
+    LDL $idx
+    LDL $len
+    IGE .end
+
+    LDL $value
+    LDL $idx
+    ALD
+
+    DUP
+    LDC .c0
+    ILT .error
+
+    DUP
+    LDC .c9
+    IGT .error
+
+    LDC .c0
+    SUB
+    LDL $res
+    LDC .base
+    MUL
+    ADD
+    STL $res
+
+    LDL $idx
+    INC 1
+    STL $idx
+
+    JMP .loop
+  .end:
+
+  LDL $res
+  RET
+
+  .error:
+    LDN
+    RET
+

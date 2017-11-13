@@ -1,0 +1,522 @@
+;; First task of any compiler, compile itself
+
+;; Investigate import statements
+
+io.printf: native
+io.fopen: native
+io.freadline: native
+map.new: native
+map.put: native
+list.new: native
+list.push: native
+regex.compile: native
+regex.match: native
+regex.replace: native
+str.substr: native
+
+stmt_const: 0x01
+stmt_label: 0x02
+stmt_inst: 0x03
+
+arg_literal: 0x01
+arg_ident: 0x02
+
+main:
+
+  $argc 0
+  $argv 1
+
+  $pool 2
+  $output 3
+
+  $idx 4
+
+  ;; Check if we have enough arguments
+  LDL $argc
+  .min_args: 2
+  LDC .min_args
+  ILT .show_usage
+
+  ;; Setup counter
+  ST1 $idx
+
+  ;; Setup constant pool
+  IVK map.new 0
+  STL $pool
+
+  ;; Open the output file
+  ;.out_name: "a.out"
+  ;LDC .out_name
+  ;.out_mode: "w"
+  ;LDC .out_mode
+  ;IVK io.fopen 2
+  ;STL $output
+
+  .loop:
+    LDL $idx
+    LDL $argc
+    IEQ .end
+
+    LDL $argv
+    LDL $idx
+    ALD
+    LDL $pool
+    IVK assemble 2
+    POP
+
+    LDL $idx
+    INC 1
+    STL $idx
+
+    JMP .loop
+  .end:
+
+  LD0
+  RET
+
+  .show_usage:
+    .usage: "Usage: %s <FILE> [FILE [FILE [...]]]\n"
+    LDC .usage
+    LDL $argv
+    LD0
+    ALD
+    IVK io.printf 2
+    POP
+    LD1
+    RET
+
+parse_opcodes:
+
+  $ops 0
+  $file 1
+  $pattern 2
+
+  IVK map.new 0
+  STL $ops
+
+  .opcodes_py: "opcodes.py"
+  LDC .opcodes_py
+  .mode: "r"
+  LDC .mode
+  IVK io.fopen 2
+  STL $file
+
+  .op_pattern: "^OP_([A-Z][A-Z0-9]*) = 0x([0-9A-Fa-f]+)"
+  LDC .op_pattern
+  IVK regex.compile 1
+  STL $pattern
+
+  .loop:
+    $loop_line 3
+    $match 4
+
+    LDL $file
+    IVK io.freadline 1
+    DUP
+    STL $loop_line
+    IIN .end
+
+    LDL $pattern
+    LDL $loop_line
+    IVK regex.match 2
+    DUP
+    STL $match
+    IIN .loop
+
+    LDL $ops
+
+    LDL $match
+    LD1
+    ALD
+
+    LDL $match
+    .val_idx: 2
+    LDC .val_idx
+    ALD
+    LD0
+    LDL $match
+    LDC .val_idx
+    ALD
+    ASZ
+    IVK parse_hex 3
+
+    IVK map.put 3
+    POP
+
+    JMP .loop
+  .end:
+
+  LDL $ops
+  RET
+
+read_lines:
+
+  $file 0
+
+  $buf 1
+
+  IVK list.new 0
+  STL $buf
+
+  .loop:
+    LDL $buf
+
+    LDL $file
+    IVK io.freadline 1
+    DUP
+
+    IIN .end
+
+    IVK list.push 2
+    POP
+
+    JMP .loop
+  .end:
+  POP
+
+  RET
+
+parse_literal:
+
+  .c0: 0x30
+  .cx: 0x78
+  .ch: 0x68
+  .cd: 0x64
+
+  $value 0
+
+  $res 1
+  $idx 2
+
+  LDL $value
+  ASZ
+  LD0
+  IEQ .error
+
+  .try_0x:
+    LDL $value
+    ASZ
+    .min_length_0x: 3
+    LDC .min_length_0x
+    ILT .try_h
+
+    LDL $value
+    LD0
+    ALD
+    LDC .c0
+    INE .try_h
+
+    LDL $value
+    LD1
+    ALD
+    LDC .cx
+    INE .try_h
+
+    LDL $value
+    .offset_0x: 2
+    LDC .offset_0x
+    LDL $value
+    ASZ
+    IVK parse_hex 3
+    RET
+
+  .try_h:
+    LDL $value
+    DUP
+    ASZ
+    DEC 1
+    ALD
+    LDC .ch
+    INE .try_d
+
+    LDL $value
+    LD0
+    LDL $value
+    ASZ
+    DEC 1
+    IVK parse_hex 3
+    RET
+
+  .try_d:
+    LDL $value
+    DUP
+    ASZ
+    DEC 1
+    ALD
+    LDC .cd
+    INE .try_int
+
+    LDL $value
+    LD0
+    LDL $value
+    ASZ
+    DEC 1
+    IVK parse_int 3
+    RET
+
+  .try_int:
+    LDL $value
+    LD0
+    LDL $value
+    ASZ
+    IVK parse_int 3
+    RET
+
+  .error:
+    LDN
+    RET
+
+parse_arg:
+
+  .cash: 0x24
+  .arg_size: 2
+
+  $value 0
+  $aliases 1
+
+  LDL $value
+  ASZ
+  LD0
+  IEQ .error
+
+  .try_alias:
+    LDL $value
+    LD0
+    ALD
+    LDC .cash
+    INE .try_literal
+
+    LDL $aliases
+    LDL $value
+    LD1
+    IVK str.substr 2
+    IVK map.get 2
+    RET
+
+  .try_literal:
+    LDL $value
+    LD0
+    LDL $value
+    ASZ
+    IVK parse_literal 3
+    DUP
+    IIN .try_ident
+    STL $value
+
+    LDC .arg_size
+    ANW
+
+    DUP
+    LD0
+    LDC arg_literal
+    AST
+
+    DUP
+    LD1
+    LDL $value
+    AST
+
+    RET
+
+  .try_ident:
+    LDC .arg_size
+    ANW
+
+    DUP
+    LD0
+    LDC arg_literal
+    AST
+
+    DUP
+    LD1
+    LDL $value
+    AST
+
+    RET
+
+  .error:
+    LDN
+    RET
+
+read_statements:
+
+  $lines 0
+
+  $stmts 1
+  $aliases 2
+  $ws_pattern 3
+  $const_pattern 4
+  $label_pattern 5
+  $alias_pattern 6
+  $inst_pattern 7
+  $idx 8
+  $line 9
+  $match 10
+
+  IVK list.new 0
+  STL $stmts
+
+  IVK map.new 0
+  STL $aliases
+
+  .ws_pattern: "^\\s+|\\s+$"
+  LDC .ws_pattern
+  IVK regex.compile 1
+  STL $ws_pattern
+
+  .const_pattern: "^(\\.?[A-Za-z_][A-Za-z0-9_\\.]*):\\s+(?:(native(?:\\s+(\\.?[A-Za-z_][A-Za-z0-9_\\.]*))?)|(0x[0-9A-Fa-f]+|[0-9A-Fa-f]+h|[0-9]+d?)|(?:\"((?:\\\\\"|.)*?)"))\\s*(?:;.*)?$"
+  LDC .const_pattern
+  IVK regex.compile 1
+  STL $const_pattern
+
+  .label_pattern: "^(\\.?[A-Za-z_][A-Za-z0-9_\\.]*):\\s*(?:;.*)?$"
+  LDC .label_pattern
+  IVK regex.compile 1
+  STL $label_pattern
+
+  .alias_pattern: "^\\$(\\.?[A-Za-z_][A-Za-z0-9_\\.]*)\\s+(0x[0-9A-Fa-f]+|[0-9A-Fa-f]+h|[0-9]+d?|\\.?[A-Za-z_][A-Za-z0-9_\\.]*)\\s*(?:;.*)?$"
+  LDC .alias_pattern
+  IVK regex.compile 1
+  STL $alias_pattern
+
+  .inst_pattern: "^(\\.?[A-Za-z_][A-Za-z0-9_\\.]*)((?:\\s+(?:0x[0-9A-Fa-f]+|[0-9A-Fa-f]+h|[0-9]+d?|\\$?\\.?[A-Za-z_][A-Za-z0-9_\\.]*))*)\\s*(?:;.*)?$"
+  LDC .inst_pattern
+  IVK regex.compile 1
+  STL $inst_pattern
+
+  ST0 $idx
+
+  .loop:
+    LDL $lines
+    ASZ
+    LDL $idx
+    IEQ .end
+
+    LDL $lines
+    LDL $idx
+    ALD
+    STL $line
+
+    LDL $ws_pattern
+    LDL $line
+    .empty_str: ""
+    LDC .empty_str
+    IVK regex.replace 3
+    STL $line
+
+    .try_const:
+      LDL $const_pattern
+      LDL $line
+      IVK regex.match 2
+      STL $match
+
+      LDL $match
+      IIN .try_label
+
+      BRK 1 ; TODO
+
+      JMP .next
+
+    .try_label:
+      .label_stmt_size: 2
+
+      LDL $label_pattern
+      LDL $line
+      IVK regex.match 2
+      STL $match
+
+      LDL $match
+      IIN .try_alias
+
+      LDL $stmts
+
+      LDC .label_stmt_size
+      ANW
+
+      DUP
+      LD0
+      LDC stmt_label
+      AST
+
+      DUP
+      LD1
+      LDL $match
+      LD1
+      ALD
+      AST
+
+      IVK list.push 2
+      POP
+
+      JMP .next
+
+    .try_alias:
+      LDL $alias_pattern
+      LDL $line
+      IVK regex.match 2
+      STL $match
+
+      LDL $match
+      IIN .try_inst
+
+      LDL $aliases
+
+      LDL $match
+      LD1
+      ALD
+
+      LDL $match
+      .alias_val_idx: 2
+      LDC .alias_val_idx
+      ALD
+      LDL $aliases
+      IVK parse_arg 2
+
+      IVK map.put 3
+      POP
+
+      JMP .next
+
+    .try_inst:
+      LDL $inst_pattern
+      LDL $line
+      IVK regex.match 2
+      STL $match
+
+      LDL $match
+      IIN .next
+
+      BRK 4 ; TODO
+
+      JMP .next
+
+    .next:
+
+    LDL $idx
+    INC 1
+    STL $idx
+
+    JMP .loop
+  .end:
+
+  LDL $lines
+  RET
+
+assemble:
+
+  $path 0
+
+  $ops 1
+  $pool 2
+
+  IVK parse_opcodes 0
+  STL $ops
+
+  LDL $path
+  .mode: "r"
+  LDC .mode
+  IVK io.fopen 2
+  IVK read_lines 1
+  IVK read_statements 1
+  RET
+

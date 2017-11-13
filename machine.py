@@ -5,15 +5,12 @@ from handlers import ops
 
 class Machine:
 
-    def __init__(self, constants=dict(), verbose=False):
-        self._constants = constants
-        self._verbose = verbose
+    def __init__(self, constants=None):
+        self._constants = constants or dict()
         self._stack = [Frame(b'')]
 
     def _step(self):
         frame = self.top_frame()
-        if self._verbose:
-            print(frame)
         pc = frame.get_pc()
         code = frame.get_code()
         if pc >= len(code):
@@ -30,13 +27,16 @@ class Machine:
         if is_native:
             native.handlers[code](self.top_frame(), self, *args)
         else:
-            self._stack.append(Frame(code, slots={i: args[i] for i in range(len(args))}))
+            self._stack.append(Frame(code, slots=[a for a in args]))
 
     def run(self, proc, *args):
         code = self.get_constant(*self.get_constant(Constant.SYMBOL, proc))
         self.invoke(code, args)
-        while self._step(): pass
-        return self.top_frame().pop_operand()
+        while self._step(): pass # Main loop
+        try:
+            return self.top_frame().pop_operand()
+        except:
+            return 0
 
     def top_frame(self):
         return self._stack[-1]

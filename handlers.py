@@ -1,6 +1,8 @@
 from constant import Constant
 from opcodes import *
 
+_INT64 = 2 ** 64 - 1
+
 ops = [(None, 0)] * 0xFF
 
 # General
@@ -88,7 +90,11 @@ ops[OP_ASZ] = (asz, 0)
 def ald(frame, machine):
     idx = frame.pop_operand()
     arr = frame.pop_operand()
-    frame.push_operand(arr[idx])
+    if isinstance(arr, str):
+        # Special case treat string as C-style string
+        frame.push_operand(ord(arr[idx]))
+    else:
+        frame.push_operand(arr[idx])
 ops[OP_ALD] = (ald, 0)
 
 def ast(frame, machine):
@@ -125,7 +131,7 @@ ops[OP_BNT] = (bnt, 0)
 
 def bls(frame, machine, amount):
     val = frame.pop_operand()
-    frame.push_operand(val << amount)
+    frame.push_operand((val << amount) & _INT64)
 ops[OP_BLS] = (bls, 1)
 
 def brs(frame, machine, amount):
@@ -138,25 +144,25 @@ ops[OP_BRS] = (brs, 1)
 def add(frame, machine):
     a = frame.pop_operand()
     b = frame.pop_operand()
-    frame.push_operand(b + a)
+    frame.push_operand((b + a) & _INT64)
 ops[OP_ADD] = (add, 0)
 
 def sub(frame, machine):
     a = frame.pop_operand()
     b = frame.pop_operand()
-    frame.push_operand(b - a)
+    frame.push_operand((b - a) & _INT64)
 ops[OP_SUB] = (sub, 0)
 
 def mul(frame, machine):
     a = frame.pop_operand()
     b = frame.pop_operand()
-    frame.push_operand(b * a)
+    frame.push_operand((b * a) & _INT64)
 ops[OP_MUL] = (mul, 0)
 
 def div(frame, machine):
     a = frame.pop_operand()
     b = frame.pop_operand()
-    frame.push_operand(b / a)
+    frame.push_operand(b // a)
 ops[OP_DIV] = (div, 0)
 
 def mod(frame, machine):
@@ -172,12 +178,12 @@ ops[OP_NEG] = (neg, 0)
 
 def inc(frame, machine, value):
     val = frame.pop_operand()
-    frame.push_operand(val + value)
+    frame.push_operand((val + value) & _INT64)
 ops[OP_INC] = (inc, 1)
 
 def dec(frame, machine, value):
     val = frame.pop_operand()
-    frame.push_operand(val - value)
+    frame.push_operand((val - value) & _INT64)
 ops[OP_DEC] = (dec, 1)
 
 # Jumps
@@ -228,12 +234,26 @@ def ilt(frame, machine, address):
         frame.set_pc(address)
 ops[OP_ILT] = (ilt, 1)
 
+def ile(frame, machine, address):
+    a = frame.pop_operand()
+    b = frame.pop_operand()
+    if b <= a:
+        frame.set_pc(address)
+ops[OP_ILE] = (ile, 1)
+
 def igt(frame, machine, address):
     a = frame.pop_operand()
     b = frame.pop_operand()
     if b > a:
         frame.set_pc(address)
 ops[OP_IGT] = (igt, 1)
+
+def ige(frame, machine, address):
+    a = frame.pop_operand()
+    b = frame.pop_operand()
+    if b >= a:
+        frame.set_pc(address)
+ops[OP_IGE] = (ige, 1)
 
 def iin(frame, machine, address):
     val = frame.pop_operand()
@@ -246,3 +266,11 @@ def inn(frame, machine, address):
     if val is not None:
         frame.set_pc(address)
 ops[OP_INN] = (inn, 1)
+
+# Debug
+
+def brk(frame, machine, ident):
+    print('Breakpoint: {}'.format(ident))
+    print(frame)
+    input('Press Enter to continue...')
+ops[OP_BRK] = (brk, 1)

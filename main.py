@@ -12,7 +12,7 @@ if __name__ == '__main__':
         with open(sys.argv[1], 'rb') as f:
             # TODO implement an actual binary format
             pool = pickle.load(f)
-            vm = Machine(dict(pool), verbose=False)
+            vm = Machine(dict(pool))
             ret = vm.run('main', len(args), args)
             if isinstance(ret, int):
                 sys.exit(ret)

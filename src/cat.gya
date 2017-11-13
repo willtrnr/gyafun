@@ -1,5 +1,11 @@
 ;; Try implementing a basic cat
 
+io.fopen: native
+io.fread: native
+io.fclose: native
+io.print: native
+io.printf: native
+
 main:
 
   $argc 0

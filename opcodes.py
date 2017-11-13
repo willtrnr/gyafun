@@ -54,6 +54,11 @@ OP_INZ = 0x23 # Pop value and if not equal to 0 jump to address
 OP_IEQ = 0x24 # Pop 2 values and if equal jump to program address
 OP_INE = 0x25 # Pop 2 values and if not equal jump to program address
 OP_ILT = 0x26 # Pop 2 values and if first is less then second jump to program address
-OP_IGT = 0x27 # Pop 2 values and if first is greater then second jump to program address
-OP_IIN = 0x28 # Pop 1 value and if null jump to program address
-OP_INN = 0x29 # pop 1 value and if not null jump to program address
+OP_ILE = 0x27 # Pop 2 values and if first is less or equal then second jump to program address
+OP_IGT = 0x28 # Pop 2 values and if first is greater then second jump to program address
+OP_IGE = 0x29 # Pop 2 values and if first is greater or equal second the jump to program address
+OP_IIN = 0x2A # Pop 1 value and if null jump to program address
+OP_INN = 0x2B # Pop 1 value and if not null jump to program address
+
+# Debug
+OP_BRK = 0x42 # Stop execution, display frame information and wait for continue

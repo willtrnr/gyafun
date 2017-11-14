@@ -29,9 +29,9 @@ parse_hex:
 
     DUP
     LDC .ca
-    ILT .skip_tolower
+    ILT .case_ok
       DEC 32
-    .skip_tolower:
+    .case_ok:
 
     DUP
     LDC .cA
@@ -133,4 +133,3 @@ parse_int:
   .error:
     LDN
     RET
-

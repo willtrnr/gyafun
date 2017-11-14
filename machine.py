@@ -7,7 +7,7 @@ class Machine:
 
     def __init__(self, constants=None):
         self._constants = constants or dict()
-        self._stack = [Frame(b'')]
+        self._stack = [Frame((-1, b''))]
 
     def _step(self):
         frame = self.top_frame()
@@ -22,21 +22,23 @@ class Machine:
         handler(frame, self, *args)
         return True
 
-    def invoke(self, code, args=[]):
-        is_native, code = code
+    def invoke(self, code_idx, args=[]):
+        is_native, code = self.get_constant(Constant.CODE, code_idx)
         if is_native:
             native.handlers[code](self.top_frame(), self, *args)
         else:
-            self._stack.append(Frame(code, slots=[a for a in args]))
+            self._stack.append(Frame((code_idx, code), slots=[a for a in args]))
 
     def run(self, proc, *args):
-        code = self.get_constant(*self.get_constant(Constant.SYMBOL, proc))
-        self.invoke(code, args)
-        while self._step(): pass # Main loop
+        symbol = self.get_constant(Constant.SYMBOL, proc)
+        self.invoke(symbol[1], args)
         try:
+            while self._step(): pass # Main loop
             return self.top_frame().pop_operand()
-        except:
-            return 0
+        except Exception as e:
+            for f in self._stack:
+                print(f)
+            raise e
 
     def top_frame(self):
         return self._stack[-1]

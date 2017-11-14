@@ -18,6 +18,10 @@ def str_substr(frame, machine, s, start, stop):
     frame.push_operand(s[start:stop])
 handlers['str.substr'] = str_substr
 
+def str_unescape(frame, machine, s):
+    frame.push_operand(bytes(s, 'utf-8').decode('unicode_escape'))
+handlers['str.unescape'] = str_unescape
+
 # List
 
 def list_new(frame, machine):

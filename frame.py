@@ -11,8 +11,9 @@ class Frame:
         return 'Frame(code={}, pc={}, operands={}, slots={})'.format(repr(self._code), repr(self._pc), repr(self._operands), repr(self._slots))
 
     def __str__(self):
-        if self._pc < len(self._code):
-            inst = self._code[self._pc]
+        code = self.get_code()
+        if self._pc < len(self.get_code()):
+            inst = code[self._pc]
             for o in dir(opcodes):
                 if o.startswith('OP_') and opcodes.__dict__[o] == inst:
                     inst = o[3:]
@@ -20,10 +21,10 @@ class Frame:
             inst = None
         operands = '\n    '.join(str(i) + ': ' + repr(self._operands[i]) for i in range(len(self._operands)))
         slots = '\n    '.join(str(i) + ': ' + repr(self._slots[i]) for i in range(len(self._slots)))
-        return 'Frame:\n  pc: {}\n  next: {}\n  operands:\n    {}\n  slots:\n    {}'.format(self._pc, inst, operands, slots)
+        return 'Frame:\n  idx: {}\n  pc: {}\n  next: {} [{}]\n  operands:\n    {}\n  slots:\n    {}'.format(self._code[0], self._pc, inst, repr(code[self._pc:self._pc + 6]), operands, slots)
 
     def get_code(self):
-        return self._code
+        return self._code[1]
 
     def set_pc(self, pc):
         self._pc = pc

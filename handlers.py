@@ -75,6 +75,13 @@ def dup(frame, machine):
     frame.push_operand(val)
 ops[OP_DUP] = (dup, 0)
 
+def swp(frame, machine):
+    a = frame.pop_operand()
+    b = frame.pop_operand()
+    frame.push_operand(a)
+    frame.push_operand(b)
+ops[OP_SWP] = (swp, 0)
+
 # Arrays
 
 def anw(frame, machine):
@@ -193,10 +200,9 @@ def jmp(frame, machine, address):
 ops[OP_JMP] = (jmp, 1)
 
 def ivk(frame, machine, idx, argc):
-    code = machine.get_constant(Constant.CODE, idx)
     args = [frame.pop_operand() for x in range(argc)]
     args.reverse()
-    machine.invoke(code, args)
+    machine.invoke(idx, args)
 ops[OP_IVK] = (ivk, 2)
 
 # Branching

@@ -2,24 +2,38 @@
 
 ;; Investigate import statements
 
+;; Native functions (and cheats :P)
 io.printf: native
 io.fopen: native
 io.freadline: native
 map.new: native
 map.put: native
+map.get: native
 list.new: native
 list.push: native
 regex.compile: native
 regex.match: native
 regex.replace: native
+regex.split: native
 str.substr: native
+str.unescape: native
 
+;; Statement type enum
 stmt_const: 0x01
 stmt_label: 0x02
 stmt_inst: 0x03
 
+;; Arg type enum
 arg_literal: 0x01
 arg_ident: 0x02
+
+;; Const type enum
+const_code: 0x01
+const_value: 0x02
+const_symbol: 0x03
+
+;; Useful
+empty_str: ""
 
 main:
 
@@ -27,7 +41,7 @@ main:
   $argv 1
 
   $pool 2
-  $output 3
+  $ops 3
 
   $idx 4
 
@@ -44,13 +58,9 @@ main:
   IVK map.new 0
   STL $pool
 
-  ;; Open the output file
-  ;.out_name: "a.out"
-  ;LDC .out_name
-  ;.out_mode: "w"
-  ;LDC .out_mode
-  ;IVK io.fopen 2
-  ;STL $output
+  ;; Parse ops from python file
+  IVK parse_opcodes 0
+  STL $ops
 
   .loop:
     LDL $idx
@@ -61,7 +71,8 @@ main:
     LDL $idx
     ALD
     LDL $pool
-    IVK assemble 2
+    LDL $ops
+    IVK assemble 3
     POP
 
     LDL $idx
@@ -289,16 +300,15 @@ parse_arg:
     LDL $aliases
     LDL $value
     LD1
-    IVK str.substr 2
+    LDL $value
+    ASZ
+    IVK str.substr 3
     IVK map.get 2
     RET
 
   .try_literal:
     LDL $value
-    LD0
-    LDL $value
-    ASZ
-    IVK parse_literal 3
+    IVK parse_literal 1
     DUP
     IIN .try_ident
     STL $value
@@ -324,7 +334,7 @@ parse_arg:
 
     DUP
     LD0
-    LDC arg_literal
+    LDC arg_ident
     AST
 
     DUP
@@ -345,13 +355,15 @@ read_statements:
   $stmts 1
   $aliases 2
   $ws_pattern 3
-  $const_pattern 4
-  $label_pattern 5
-  $alias_pattern 6
-  $inst_pattern 7
-  $idx 8
-  $line 9
-  $match 10
+  $trim_pattern 4
+  $const_pattern 5
+  $label_pattern 6
+  $alias_pattern 7
+  $inst_pattern 8
+  $idx 9
+  $line 10
+  $match 11
+  $sub_idx 12
 
   IVK list.new 0
   STL $stmts
@@ -359,7 +371,12 @@ read_statements:
   IVK map.new 0
   STL $aliases
 
-  .ws_pattern: "^\\s+|\\s+$"
+  .trim_pattern: "^\\s+|\\s+$"
+  LDC .trim_pattern
+  IVK regex.compile 1
+  STL $trim_pattern
+
+  .ws_pattern: "\\s+"
   LDC .ws_pattern
   IVK regex.compile 1
   STL $ws_pattern
@@ -397,14 +414,17 @@ read_statements:
     ALD
     STL $line
 
-    LDL $ws_pattern
+    LDL $trim_pattern
     LDL $line
-    .empty_str: ""
-    LDC .empty_str
+    LDC empty_str
     IVK regex.replace 3
     STL $line
 
     .try_const:
+      .const_stmt_size: 4
+      .const_type_idx: 2
+      .const_value_idx: 3
+
       LDL $const_pattern
       LDL $line
       IVK regex.match 2
@@ -413,9 +433,121 @@ read_statements:
       LDL $match
       IIN .try_label
 
-      BRK 1 ; TODO
+      LDL $stmts
 
-      JMP .next
+      LDC .const_stmt_size
+      ANW
+
+      DUP
+      LD0
+      LDC stmt_const
+      AST
+
+      DUP
+      LD1
+      LDL $match
+      LD1
+      ALD
+      AST
+
+      .try_const_code:
+        .const_code_size: 2
+        .const_code_native_idx: 2
+        .const_code_name_idx: 3
+
+        LDL $match
+        LDC .const_code_native_idx
+        ALD
+        IIN .try_const_int
+
+        DUP
+        LDC .const_type_idx
+        LDC const_code
+        AST
+
+        DUP
+        LDC .const_value_idx
+
+        LDC .const_code_size
+        ANW
+
+        DUP
+        LD0
+        LD1
+        AST
+
+        DUP
+        LD1
+        LDL $match
+        LDC .const_code_name_idx
+        ALD
+        DUP
+        INN .const_code_has_name
+          POP
+          LDL $match
+          LD1
+          ALD
+        .const_code_has_name:
+        AST
+
+        AST
+
+        IVK list.push 2
+        POP
+
+        JMP .next
+
+      .try_const_int:
+        .const_int_idx: 4
+
+        LDL $match
+        LDC .const_int_idx
+        ALD
+        IIN .try_const_string
+
+        DUP
+        LDC .const_type_idx
+        LDC const_value
+        AST
+
+        DUP
+        LDC .const_value_idx
+        LDL $match
+        LDC .const_int_idx
+        ALD
+        IVK parse_literal 1
+        AST
+
+        IVK list.push 2
+        POP
+
+        JMP .next
+
+      .try_const_string:
+        .const_string_idx: 5
+
+        LDL $match
+        LDC .const_string_idx
+        ALD
+        IIN .next
+
+        DUP
+        LDC .const_type_idx
+        LDC const_value
+        AST
+
+        DUP
+        LDC .const_value_idx
+        LDL $match
+        LDC .const_string_idx
+        ALD
+        IVK str.unescape 1
+        AST
+
+        IVK list.push 2
+        POP
+
+        JMP .next
 
     .try_label:
       .label_stmt_size: 2
@@ -451,6 +583,8 @@ read_statements:
       JMP .next
 
     .try_alias:
+      .alias_value_idx: 2
+
       LDL $alias_pattern
       LDL $line
       IVK regex.match 2
@@ -466,8 +600,7 @@ read_statements:
       ALD
 
       LDL $match
-      .alias_val_idx: 2
-      LDC .alias_val_idx
+      LDC .alias_value_idx
       ALD
       LDL $aliases
       IVK parse_arg 2
@@ -478,6 +611,9 @@ read_statements:
       JMP .next
 
     .try_inst:
+      .inst_stmt_size: 3
+      .inst_args_idx: 2
+
       LDL $inst_pattern
       LDL $line
       IVK regex.match 2
@@ -486,7 +622,76 @@ read_statements:
       LDL $match
       IIN .next
 
-      BRK 4 ; TODO
+      LDL $stmts
+
+      LDC .inst_stmt_size
+      ANW
+
+      DUP
+      LD0
+      LDC stmt_inst
+      AST
+
+      DUP
+      LD1
+      LDL $match
+      LD1
+      ALD
+      AST
+
+      DUP
+      LDC .inst_args_idx
+
+      LDL $match
+      LDC .inst_args_idx
+      ALD
+      ASZ
+      LD0
+      IEQ .inst_no_args
+        LDL $ws_pattern
+        LDL $trim_pattern
+        LDL $match
+        LDC .inst_args_idx
+        ALD
+        LDC empty_str
+        IVK regex.replace 3
+        IVK regex.split 2
+
+        LD0
+        STL $sub_idx
+
+        .inst_args_loop:
+          DUP
+          ASZ
+          LDL $sub_idx
+          IEQ .inst_args_end
+
+          DUP
+          DUP
+          LDL $sub_idx
+          ALD
+          LDL $aliases
+          IVK parse_arg 2
+          LDL $sub_idx
+          SWP
+          AST
+
+          LDL $sub_idx
+          INC 1
+          STL $sub_idx
+
+          JMP .inst_args_loop
+        .inst_args_end:
+
+        JMP .inst_no_args_end
+      .inst_no_args:
+        LD0
+        ANW
+      .inst_no_args_end:
+      AST
+
+      IVK list.push 2
+      POP
 
       JMP .next
 
@@ -499,18 +704,20 @@ read_statements:
     JMP .loop
   .end:
 
-  LDL $lines
+  LDL $stmts
   RET
 
 assemble:
 
   $path 0
+  $pool 1
+  $ops 2
 
-  $ops 1
-  $pool 2
-
-  IVK parse_opcodes 0
-  STL $ops
+  LDL $ops
+  INN .has_ops
+    IVK parse_ops 0
+    STL $ops
+  .has_ops:
 
   LDL $path
   .mode: "r"
@@ -518,5 +725,8 @@ assemble:
   IVK io.fopen 2
   IVK read_lines 1
   IVK read_statements 1
+
+  BRK 42 ; TODO
+
   RET
 

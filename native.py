@@ -22,48 +22,6 @@ def str_unescape(frame, machine, s):
     frame.push_operand(bytes(s, 'utf-8').decode('unicode_escape'))
 handlers['str.unescape'] = str_unescape
 
-# List
-
-def list_new(frame, machine):
-    frame.push_operand(list())
-handlers['list.new'] = list_new
-
-def list_push(frame, machine, lst, value):
-    lst.append(value)
-    frame.push_operand(None)
-handlers['list.push'] = list_push
-
-def list_at(frame, machine, lst, idx):
-    frame.push_operand(lst[idx])
-handlers['list.at'] = list_at
-
-def list_size(frame, machine, lst):
-    frame.push_operand(len(lst))
-handlers['list.size'] = list_size
-
-# Map
-
-def map_new(frame, machine):
-    frame.push_operand(dict())
-handlers['map.new'] = map_new
-
-def map_put(frame, machine, table, key, value):
-    table[key] = value
-    frame.push_operand(None)
-handlers['map.put'] = map_put
-
-def map_get(frame, machine, table, key):
-    frame.push_operand(table.get(key))
-handlers['map.get'] = map_get
-
-def map_contains(frame, machine, table, key):
-    frame.push_operand(1 if key in table else 0)
-handlers['map.contains'] = map_contains
-
-def map_size(frame, machine, table):
-    frame.push_operand(len(table))
-handlers['map.size'] = map_size
-
 # Regex
 
 def regex_compile(frame, machine, pattern):

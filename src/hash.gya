@@ -3,10 +3,12 @@
 fnv1a_init: 0xcbf29ce484222325
 
 fnv1a_hash:
+  .int64: 0xFFFFFFFFFFFFFFFF
 
   $buf 0
   $len 1
   $hval 2
+
   $idx 3
 
   ST0 $idx
@@ -26,24 +28,55 @@ fnv1a_hash:
 
     ;; hval += (hval<<1) + (hval<<4) + (hval<<5) + (hval<<7) + (hval<<8) + (hval<<40);
     LDL $hval
+
     LDL $hval
     BLS 1
+    LDC .int64
+    BND
     ADD
+    LDC .int64
+    BND
+
     LDL $hval
     BLS 4
+    LDC .int64
+    BND
     ADD
+    LDC .int64
+    BND
+
     LDL $hval
     BLS 5
+    LDC .int64
+    BND
     ADD
+    LDC .int64
+    BND
+
     LDL $hval
     BLS 7
+    LDC .int64
+    BND
     ADD
+    LDC .int64
+    BND
+
     LDL $hval
     BLS 8
+    LDC .int64
+    BND
     ADD
+    LDC .int64
+    BND
+
     LDL $hval
     BLS 40
+    LDC .int64
+    BND
     ADD
+    LDC .int64
+    BND
+
     STL $hval
 
     LDL $idx

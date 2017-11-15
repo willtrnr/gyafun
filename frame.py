@@ -11,17 +11,12 @@ class Frame:
         return 'Frame(code={}, pc={}, operands={}, slots={})'.format(repr(self._code), repr(self._pc), repr(self._operands), repr(self._slots))
 
     def __str__(self):
+        pc = self.get_pc()
         code = self.get_code()
-        if self._pc < len(self.get_code()):
-            inst = code[self._pc]
-            for o in dir(opcodes):
-                if o.startswith('OP_') and opcodes.__dict__[o] == inst:
-                    inst = o[3:]
-        else:
-            inst = None
+        inst = self.get_opcode_name()
         operands = '\n    '.join(str(i) + ': ' + repr(self._operands[i]) for i in range(len(self._operands)))
         slots = '\n    '.join(str(i) + ': ' + repr(self._slots[i]) for i in range(len(self._slots)))
-        return 'Frame:\n  idx: {}\n  pc: {}\n  next: {} [{}]\n  operands:\n    {}\n  slots:\n    {}'.format(self._code[0], self._pc, inst, repr(code[self._pc:self._pc + 6]), operands, slots)
+        return 'Frame:\n  idx: {}\n  pc: {}\n  next: {} [{}]\n  operands:\n    {}\n  slots:\n    {}'.format(self._code[0], pc, inst, repr(code[pc:pc + 6]), operands, slots)
 
     def get_code(self):
         return self._code[1]
@@ -31,6 +26,19 @@ class Frame:
 
     def get_pc(self):
         return self._pc
+
+    def get_opcode(self):
+        pc = self.get_pc()
+        code = self.get_code()
+        if pc < len(code):
+            return code[pc]
+        else:
+            return None
+
+    def get_args(self, count):
+        pc = self.get_pc()
+        code = self.get_code()
+        return [int.from_bytes(code[pc + 1 + x * 2:pc + 1 + (x + 1) * 2], byteorder='little', signed=False) for x in range(count)]
 
     def push_operand(self, value):
         self._operands.append(value)
@@ -46,3 +54,11 @@ class Frame:
 
     def get_slot(self, idx):
         return self._slots[idx]
+
+    def get_opcode_name(self):
+        op = self.get_opcode()
+        if op is not None:
+            for o in dir(opcodes):
+                if o.startswith('OP_') and opcodes.__dict__[o] == op:
+                    return o[3:]
+        return op

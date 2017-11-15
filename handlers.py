@@ -1,8 +1,6 @@
 from constant import Constant
 from opcodes import *
 
-_INT64 = 2 ** 64 - 1
-
 ops = [(None, 0)] * 0xFF
 
 # General
@@ -111,6 +109,53 @@ def ast(frame, machine):
     arr[idx] = val
 ops[OP_AST] = (ast, 0)
 
+def aps(frame, machine):
+    val = frame.pop_operand()
+    arr = frame.pop_operand()
+    arr.append(val)
+ops[OP_APS] = (aps, 0)
+
+def apo(frame, machine):
+    arr = frame.pop_operand()
+    frame.push_operand(arr.pop())
+ops[OP_APO] = (apo, 0)
+
+# Maps
+
+def mnw(frame, machine):
+    frame.push_operand(dict())
+ops[OP_MNW] = (mnw, 0)
+
+def msz(frame, machine):
+    tbl = frame.pop_operand()
+    frame.push_operand(len(tbl))
+ops[OP_MSZ] = (msz, 0)
+
+def mld(frame, machine):
+    key = frame.pop_operand()
+    tbl = frame.pop_operand()
+    frame.push_operand(tbl.get(key))
+ops[OP_MLD] = (mld, 0)
+
+def mst(frame, machine):
+    val = frame.pop_operand()
+    key = frame.pop_operand()
+    tbl = frame.pop_operand()
+    tbl[key] = val
+ops[OP_MST] = (mst, 0)
+
+def mrm(frame, machine):
+    key = frame.pop_operand()
+    tbl = frame.pop_operand()
+    del tbl[key]
+ops[OP_MRM] = (mrm, 0)
+
+def mct(frame, machine):
+    key = frame.pop_operand()
+    tbl = frame.pop_operand()
+    frame.push_operand(key in tbl)
+ops[OP_MCT] = (mct, 0)
+
 # Bitwise
 
 def bnd(frame, machine):
@@ -138,7 +183,7 @@ ops[OP_BNT] = (bnt, 0)
 
 def bls(frame, machine, amount):
     val = frame.pop_operand()
-    frame.push_operand((val << amount) & _INT64)
+    frame.push_operand(val << amount)
 ops[OP_BLS] = (bls, 1)
 
 def brs(frame, machine, amount):
@@ -151,25 +196,28 @@ ops[OP_BRS] = (brs, 1)
 def add(frame, machine):
     a = frame.pop_operand()
     b = frame.pop_operand()
-    frame.push_operand((b + a) & _INT64)
+    frame.push_operand(b + a)
 ops[OP_ADD] = (add, 0)
 
 def sub(frame, machine):
     a = frame.pop_operand()
     b = frame.pop_operand()
-    frame.push_operand((b - a) & _INT64)
+    frame.push_operand(b - a)
 ops[OP_SUB] = (sub, 0)
 
 def mul(frame, machine):
     a = frame.pop_operand()
     b = frame.pop_operand()
-    frame.push_operand((b * a) & _INT64)
+    frame.push_operand(b * a)
 ops[OP_MUL] = (mul, 0)
 
 def div(frame, machine):
     a = frame.pop_operand()
     b = frame.pop_operand()
-    frame.push_operand(b // a)
+    if isinstance(int, b):
+        frame.push_operand(b // a)
+    else:
+        frame.push_operand(b / a)
 ops[OP_DIV] = (div, 0)
 
 def mod(frame, machine):
@@ -185,12 +233,12 @@ ops[OP_NEG] = (neg, 0)
 
 def inc(frame, machine, value):
     val = frame.pop_operand()
-    frame.push_operand((val + value) & _INT64)
+    frame.push_operand(val + value)
 ops[OP_INC] = (inc, 1)
 
 def dec(frame, machine, value):
     val = frame.pop_operand()
-    frame.push_operand((val - value) & _INT64)
+    frame.push_operand(val - value)
 ops[OP_DEC] = (dec, 1)
 
 # Jumps
@@ -274,6 +322,14 @@ def inn(frame, machine, address):
 ops[OP_INN] = (inn, 1)
 
 # Debug
+
+def trb(frame, machine):
+    machine.set_trace(True)
+ops[OP_TRB] = (trb, 0)
+
+def trs(frame, machine):
+    machine.set_trace(False)
+ops[OP_TRS] = (trs, 0)
 
 def brk(frame, machine, ident):
     print('Breakpoint: {}'.format(ident))

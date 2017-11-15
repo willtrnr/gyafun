@@ -1,0 +1,27 @@
+;; Hashing function testing program
+
+io.printf: native
+
+;; TODO Really investigate import stuff
+
+main:
+
+  $argc 0
+  $argv 1
+
+  LDL $argv
+  LD1
+  ALD
+  DUP
+  ASZ
+  LDC fnv1a_init
+  IVK fnv1a_hash 3
+  .int2str: "%d\n"
+  LDC .int2str
+  SWP
+  IVK io.printf 2
+  POP
+
+  LD0
+  RET
+

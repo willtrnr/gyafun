@@ -6,11 +6,6 @@
 io.printf: native
 io.fopen: native
 io.freadline: native
-map.new: native
-map.put: native
-map.get: native
-list.new: native
-list.push: native
 regex.compile: native
 regex.match: native
 regex.replace: native
@@ -55,7 +50,7 @@ main:
   ST1 $idx
 
   ;; Setup constant pool
-  IVK map.new 0
+  MNW
   STL $pool
 
   ;; Parse ops from python file
@@ -73,6 +68,7 @@ main:
     LDL $pool
     LDL $ops
     IVK assemble 3
+    BRK 0x42 ; TODO
     POP
 
     LDL $idx
@@ -102,7 +98,7 @@ parse_opcodes:
   $file 1
   $pattern 2
 
-  IVK map.new 0
+  MNW
   STL $ops
 
   .opcodes_py: "opcodes.py"
@@ -151,8 +147,7 @@ parse_opcodes:
     ASZ
     IVK parse_hex 3
 
-    IVK map.put 3
-    POP
+    MST
 
     JMP .loop
   .end:
@@ -166,7 +161,8 @@ read_lines:
 
   $buf 1
 
-  IVK list.new 0
+  LD0
+  ANW
   STL $buf
 
   .loop:
@@ -178,8 +174,7 @@ read_lines:
 
     IIN .end
 
-    IVK list.push 2
-    POP
+    APS
 
     JMP .loop
   .end:
@@ -303,7 +298,7 @@ parse_arg:
     LDL $value
     ASZ
     IVK str.substr 3
-    IVK map.get 2
+    MLD
     RET
 
   .try_literal:
@@ -365,10 +360,11 @@ read_statements:
   $match 11
   $sub_idx 12
 
-  IVK list.new 0
+  LD0
+  ANW
   STL $stmts
 
-  IVK map.new 0
+  MNW
   STL $aliases
 
   .trim_pattern: "^\\s+|\\s+$"
@@ -381,22 +377,22 @@ read_statements:
   IVK regex.compile 1
   STL $ws_pattern
 
-  .const_pattern: "^(\\.?[A-Za-z_][A-Za-z0-9_\\.]*):\\s+(?:(native(?:\\s+(\\.?[A-Za-z_][A-Za-z0-9_\\.]*))?)|(0x[0-9A-Fa-f]+|[0-9A-Fa-f]+h|[0-9]+d?)|(?:\"((?:\\\\\"|.)*?)"))\\s*(?:;.*)?$"
+  .const_pattern: "^(\\.?[A-Za-z_][A-Za-z0-9_\\.\\$\\-]*):\\s+(?:(native(?:\\s+(\\.?[A-Za-z_][A-Za-z0-9_\\.\\$\\-]*))?)|(0x[0-9A-Fa-f]+|[0-9A-Fa-f]+h|[0-9]+d?)|(?:\"((?:\\\\\"|.)*?)"))\\s*(?:;.*)?$"
   LDC .const_pattern
   IVK regex.compile 1
   STL $const_pattern
 
-  .label_pattern: "^(\\.?[A-Za-z_][A-Za-z0-9_\\.]*):\\s*(?:;.*)?$"
+  .label_pattern: "^(\\.?[A-Za-z_][A-Za-z0-9_\\.\\$\\-]*):\\s*(?:;.*)?$"
   LDC .label_pattern
   IVK regex.compile 1
   STL $label_pattern
 
-  .alias_pattern: "^\\$(\\.?[A-Za-z_][A-Za-z0-9_\\.]*)\\s+(0x[0-9A-Fa-f]+|[0-9A-Fa-f]+h|[0-9]+d?|\\.?[A-Za-z_][A-Za-z0-9_\\.]*)\\s*(?:;.*)?$"
+  .alias_pattern: "^\\$(\\.?[A-Za-z_][A-Za-z0-9_\\.\\$\\-]*)\\s+(0x[0-9A-Fa-f]+|[0-9A-Fa-f]+h|[0-9]+d?|\\.?[A-Za-z_][A-Za-z0-9_\\.\\$\\-]*)\\s*(?:;.*)?$"
   LDC .alias_pattern
   IVK regex.compile 1
   STL $alias_pattern
 
-  .inst_pattern: "^(\\.?[A-Za-z_][A-Za-z0-9_\\.]*)((?:\\s+(?:0x[0-9A-Fa-f]+|[0-9A-Fa-f]+h|[0-9]+d?|\\$?\\.?[A-Za-z_][A-Za-z0-9_\\.]*))*)\\s*(?:;.*)?$"
+  .inst_pattern: "^(\\.?[A-Za-z_][A-Za-z0-9_\\.\\$\\-]*)((?:\\s+(?:0x[0-9A-Fa-f]+|[0-9A-Fa-f]+h|[0-9]+d?|\\$?\\.?[A-Za-z_][A-Za-z0-9_\\.\\$\\-]*))*)\\s*(?:;.*)?$"
   LDC .inst_pattern
   IVK regex.compile 1
   STL $inst_pattern
@@ -492,8 +488,7 @@ read_statements:
 
         AST
 
-        IVK list.push 2
-        POP
+        APS
 
         JMP .next
 
@@ -518,8 +513,7 @@ read_statements:
         IVK parse_literal 1
         AST
 
-        IVK list.push 2
-        POP
+        APS
 
         JMP .next
 
@@ -544,8 +538,7 @@ read_statements:
         IVK str.unescape 1
         AST
 
-        IVK list.push 2
-        POP
+        APS
 
         JMP .next
 
@@ -577,8 +570,7 @@ read_statements:
       ALD
       AST
 
-      IVK list.push 2
-      POP
+      APS
 
       JMP .next
 
@@ -605,8 +597,7 @@ read_statements:
       LDL $aliases
       IVK parse_arg 2
 
-      IVK map.put 3
-      POP
+      MST
 
       JMP .next
 
@@ -690,8 +681,7 @@ read_statements:
       .inst_no_args_end:
       AST
 
-      IVK list.push 2
-      POP
+      APS
 
       JMP .next
 

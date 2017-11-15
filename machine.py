@@ -8,17 +8,18 @@ class Machine:
     def __init__(self, constants=None):
         self._constants = constants or dict()
         self._stack = [Frame((-1, b''))]
+        self._trace = False
 
     def _step(self):
         frame = self.top_frame()
-        pc = frame.get_pc()
-        code = frame.get_code()
-        if pc >= len(code):
+        op = frame.get_opcode()
+        if op is None:
             return False
-        op = code[pc]
-        (handler, argc) = ops[op]
-        frame.set_pc(pc + 1 + argc * 2)
-        args = [int.from_bytes(code[pc + 1 + x * 2:pc + 1 + (x + 1) * 2], byteorder='little', signed=False) for x in range(argc)]
+        if self._trace:
+            print(frame.get_opcode_name())
+        handler, argc = ops[op]
+        args = frame.get_args(argc)
+        frame.set_pc(frame.get_pc() + 1 + argc * 2)
         handler(frame, self, *args)
         return True
 
@@ -48,3 +49,6 @@ class Machine:
 
     def get_constant(self, kind, idx):
         return self._constants.get((kind, idx))
+
+    def set_trace(self, trace):
+        self._trace = True if trace else False # make truthy values actually true

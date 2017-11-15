@@ -19,13 +19,14 @@ Design
 Uses 1 byte opcodes with a variable amount of 2 bytes arguments little-endian
 encoded. This makes parsing the bytecode very easy and consistent.
 
-Native types are (same as Python really):
+"Native" types are (same as Python really):
 
-  * int (Python's infinite int clipped at 64-bit, reconsidering the clipping)
+  * int
   * float (needs better support, can't even set as constant)
   * string (needs better support, mostly cheating with native calls)
-  * list (needs better support, currently cheating with native calls)
-  * *map* (in consideration)
+  * list
+  * map
+  * *set* (in consideration)
 
 A constant pool is used to store int and string values and all opcode arguments
 refer to an index in it except for `INC` and `DEC` which uses the argument as a
@@ -51,6 +52,10 @@ Wanna-be assembly files can be "assembled" using (multiple files can be passed)
 And the `a.out` can be executed with
 
     python main.py a.out args...
+
+Be aware that the opcode values are changed a lot to keep related things
+together and binary compatibility is pretty much useless right now since no
+executables are kept long enough for that.
 
 License
 -------

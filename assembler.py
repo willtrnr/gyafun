@@ -16,7 +16,7 @@ class Argument(Enum):
 
 OPS = {o[3:]: opcodes.__dict__[o] for o in dir(opcodes) if o.startswith('OP_')}
 
-IDENT = r'\.?[A-Za-z_][A-Za-z0-9_\.]*'
+IDENT = r'\.?[A-Za-z_][A-Za-z0-9_\.\$\-]*'
 NUM_LIT = r'0x[0-9A-Fa-f]+|[0-9A-Fa-f]+h|[0-9]+d?'
 STR_LIT = r'"((?:\\"|.)*?)"'
 
@@ -76,7 +76,10 @@ def read_stmts(lines):
                         args = [parse_arg(a, aliases) for a in inst.captures(2)] if inst.captures(2) else list()
                         yield (Statement.INST, inst.group(1).upper(), args)
 
-def assemble(stmts, pool=dict()):
+def assemble(stmts, pool=None, reverse_pool=None):
+    pool = pool or dict()
+    reverse_pool = reverse_pool or dict()
+
     labels = dict()
     symbols = dict()
 
@@ -94,16 +97,23 @@ def assemble(stmts, pool=dict()):
     current = None
     for stmt in stmts:
         if stmt[0] == Statement.CONST:
-            if (stmt[2], stmt[1]) not in pool:
-                if stmt[2] == Constant.CODE:
-                    if (stmt[2], stmt[1]) not in pool:
+            if stmt[2] == Constant.CODE:
+                if (stmt[2], stmt[1]) not in pool:
+                    if (stmt[2], stmt[3]) in reverse_pool:
+                        pool[stmt[2], stmt[1]] = reverse_pool[stmt[2], stmt[3]]
+                    else:
                         pool[stmt[2], stmt[1]] = code_idx
+                        reverse_pool[stmt[2], stmt[3]] = value_idx
                         yield ((Constant.CODE, code_idx), stmt[3])
                         code_idx += 1
-                elif stmt[2] == Constant.VALUE:
-                    name = (current, stmt[1]) if stmt[1].startswith('.') else stmt[1]
-                    if (stmt[2], name) not in pool:
+            elif stmt[2] == Constant.VALUE:
+                name = (current, stmt[1]) if stmt[1].startswith('.') else stmt[1]
+                if (stmt[2], name) not in pool:
+                    if (stmt[2], stmt[3]) in reverse_pool:
+                        pool[stmt[2], name] = reverse_pool[stmt[2], stmt[3]]
+                    else:
                         pool[stmt[2], name] = value_idx
+                        reverse_pool[stmt[2], stmt[3]] = value_idx
                         yield ((Constant.VALUE, value_idx), stmt[3])
                         value_idx += 1
         elif stmt[0] == Statement.LABEL:
@@ -150,8 +160,10 @@ if __name__ == '__main__':
         sys.exit(1)
     else:
         with open('a.out', 'wb') as f:
+            global_pool = dict()
+            global_reverse_pool = dict()
             parts = list()
-            for part in assemble(read_stmts(read_lines(sys.argv[1:]))):
+            for part in assemble(read_stmts(read_lines(sys.argv[1:])), global_pool, global_reverse_pool):
                 print(part)
                 parts.append(part)
             # TODO make an actual binary file format

@@ -153,8 +153,37 @@ ops[OP_MRM] = (mrm, 0)
 def mct(frame, machine):
     key = frame.pop_operand()
     tbl = frame.pop_operand()
-    frame.push_operand(key in tbl)
+    frame.push_operand(1 if key in tbl else 0)
 ops[OP_MCT] = (mct, 0)
+
+def mky(frame, machine):
+    tbl = frame.pop_operand()
+    frame.push_operand(list(tbl.keys()))
+ops[OP_MKY] = (mky, 0)
+
+def mvl(frame, machine):
+    tbl = frame.pop_operand()
+    frame.push_operand(list(tbl.values()))
+ops[OP_MVL] = (mvl, 0)
+
+# Tuples
+
+def tnw(frame, machine, size):
+    args = [frame.pop_operand() for x in range(size)]
+    args.reverse()
+    frame.push_operand(tuple(args))
+ops[OP_TNW] = (tnw, 1)
+
+def tsz(frame, machine):
+    tpl = frame.pop_operand()
+    frame.push_operand(len(tpl))
+ops[OP_TSZ] = (tsz, 0)
+
+def tld(frame, machine):
+    idx = frame.pop_operand()
+    tpl = frame.pop_operand()
+    frame.push_operand(tpl[idx])
+ops[OP_TLD] = (tld, 0)
 
 # Bitwise
 

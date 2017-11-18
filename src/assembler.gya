@@ -27,6 +27,27 @@ const_code: 0x01
 const_value: 0x02
 const_symbol: 0x03
 
+;; Stmt Structure
+stmt_type_idx: 0
+
+stmt_const_size: 4
+stmt_const_name_idx: 1
+stmt_const_type_idx: 2
+stmt_const_value_idx: 3
+
+stmt_label_size: 2
+stmt_label_name_idx: 1
+
+stmt_inst_size: 3
+stmt_inst_op_idx: 1
+stmt_inst_args_idx: 2
+
+;; Const Structure
+const_size: 3
+const_type_idx: 0
+const_id_idx: 1
+const_value_idx: 2
+
 ;; Useful
 empty_str: ""
 
@@ -35,10 +56,11 @@ main:
   $argc 0
   $argv 1
 
-  $pool 2
-  $ops 3
+  $ops 2
+  $code_pool 3
+  $const_pool 4
 
-  $idx 4
+  $idx 5
 
   ;; Check if we have enough arguments
   LDL $argc
@@ -46,17 +68,17 @@ main:
   LDC .min_args
   ILT .show_usage
 
-  ;; Setup counter
-  ST1 $idx
-
-  ;; Setup constant pool
-  MNW
-  STL $pool
-
-  ;; Parse ops from python file
+  ;; Parse ops from python file (a little hacky)
   IVK parse_opcodes 0
   STL $ops
 
+  ;; Setup a shared constant pool
+  MNW
+  STL $code_pool
+  MNW
+  STL $const_pool
+
+  ST1 $idx
   .loop:
     LDL $idx
     LDL $argc
@@ -65,9 +87,19 @@ main:
     LDL $argv
     LDL $idx
     ALD
-    LDL $pool
+    .mode: "r"
+    LDC .mode
+    IVK io.fopen 2
+    DUP
+    IIN .error_not_open
+    IVK read_lines 1
+    IVK read_statements 1
+
     LDL $ops
-    IVK assemble 3
+    LDL $code_pool
+    LDL $const_pool
+    IVK assemble 4
+
     BRK 0x42 ; TODO
     POP
 
@@ -90,6 +122,15 @@ main:
     IVK io.printf 2
     POP
     LD1
+    RET
+
+  .error_not_open:
+    .open_error: "%s: File not found or not readable\n"
+    LDC .open_error
+    LDL $argv
+    LDL $idx
+    ALD
+    IVK io.printf 2
     RET
 
 parse_opcodes:
@@ -417,10 +458,6 @@ read_statements:
     STL $line
 
     .try_const:
-      .const_stmt_size: 4
-      .const_type_idx: 2
-      .const_value_idx: 3
-
       LDL $const_pattern
       LDL $line
       IVK regex.match 2
@@ -431,16 +468,16 @@ read_statements:
 
       LDL $stmts
 
-      LDC .const_stmt_size
+      LDC stmt_const_size
       ANW
 
       DUP
-      LD0
+      LDC stmt_type_idx
       LDC stmt_const
       AST
 
       DUP
-      LD1
+      LDC stmt_const_name_idx
       LDL $match
       LD1
       ALD
@@ -457,12 +494,12 @@ read_statements:
         IIN .try_const_int
 
         DUP
-        LDC .const_type_idx
+        LDC stmt_const_type_idx
         LDC const_code
         AST
 
         DUP
-        LDC .const_value_idx
+        LDC stmt_const_value_idx
 
         LDC .const_code_size
         ANW
@@ -501,12 +538,12 @@ read_statements:
         IIN .try_const_string
 
         DUP
-        LDC .const_type_idx
+        LDC stmt_const_type_idx
         LDC const_value
         AST
 
         DUP
-        LDC .const_value_idx
+        LDC stmt_const_value_idx
         LDL $match
         LDC .const_int_idx
         ALD
@@ -526,12 +563,12 @@ read_statements:
         IIN .next
 
         DUP
-        LDC .const_type_idx
+        LDC stmt_const_type_idx
         LDC const_value
         AST
 
         DUP
-        LDC .const_value_idx
+        LDC stmt_const_value_idx
         LDL $match
         LDC .const_string_idx
         ALD
@@ -543,8 +580,6 @@ read_statements:
         JMP .next
 
     .try_label:
-      .label_stmt_size: 2
-
       LDL $label_pattern
       LDL $line
       IVK regex.match 2
@@ -555,16 +590,16 @@ read_statements:
 
       LDL $stmts
 
-      LDC .label_stmt_size
+      LDC stmt_label_size
       ANW
 
       DUP
-      LD0
+      LDC stmt_type_idx
       LDC stmt_label
       AST
 
       DUP
-      LD1
+      LDC stmt_label_name_idx
       LDL $match
       LD1
       ALD
@@ -602,7 +637,6 @@ read_statements:
       JMP .next
 
     .try_inst:
-      .inst_stmt_size: 3
       .inst_args_idx: 2
 
       LDL $inst_pattern
@@ -615,23 +649,23 @@ read_statements:
 
       LDL $stmts
 
-      LDC .inst_stmt_size
+      LDC stmt_inst_size
       ANW
 
       DUP
-      LD0
+      LDC stmt_type_idx
       LDC stmt_inst
       AST
 
       DUP
-      LD1
+      LDC stmt_inst_op_idx
       LDL $match
       LD1
       ALD
       AST
 
       DUP
-      LDC .inst_args_idx
+      LDC stmt_inst_args_idx
 
       LDL $match
       LDC .inst_args_idx
@@ -650,7 +684,6 @@ read_statements:
 
         LD0
         STL $sub_idx
-
         .inst_args_loop:
           DUP
           ASZ
@@ -698,25 +731,284 @@ read_statements:
   RET
 
 assemble:
+  .dot: 0x2E
 
-  $path 0
-  $pool 1
-  $ops 2
+  $stmts 0
+  $ops 1
+  $code_pool 2
+  $const_pool 3
 
-  LDL $ops
-  INN .has_ops
-    IVK parse_ops 0
-    STL $ops
-  .has_ops:
+  $output 4
+  $labels 5
+  $symbols 6
+  $current 7
+  $pos 8
+  $idx 9
+  $name 10
 
-  LDL $path
-  .mode: "r"
-  LDC .mode
-  IVK io.fopen 2
-  IVK read_lines 1
-  IVK read_statements 1
+  LD0
+  ANW
+  STL $output
 
-  BRK 42 ; TODO
+  MNW
+  STL $labels
 
+  MNW
+  STL $symbols
+
+  STN $current
+
+  ST0 $pos
+
+  ST0 $idx
+  .first_loop:
+    LDL $idx
+    LDL $stmts
+    ASZ
+    IEQ .first_end
+
+    LDL $stmts
+    LDL $idx
+    ALD
+
+    DUP
+    LDC stmt_type_idx
+    ALD
+
+    DUP
+    LDC stmt_const
+    IEQ .first_is_const
+
+    DUP
+    LDC stmt_label
+    IEQ .first_is_label
+
+    DUP
+    LDC stmt_inst
+    IEQ .first_is_inst
+
+    JMP .first_next
+
+    .first_is_const:
+      POP
+
+      DUP
+      LDC stmt_const_type_idx
+      ALD
+
+      DUP
+      LDC const_code
+      IEQ .first_is_const_code
+
+      DUP
+      LDC const_value
+      IEQ .first_is_const_value
+
+      POP
+
+      JMP .first_next
+
+      .first_is_const_code:
+        POP
+
+        DUP
+        LDL $code_pool
+        SWP
+        LDC stmt_const_name_idx
+        ALD
+        MCT
+        INZ .first_next
+
+        DUP
+        LDL $output
+        SWP
+        LDC const_code
+        LDL $code_pool
+        MSZ
+        TNW 2
+        SWP
+        LDC stmt_const_value_idx
+        ALD
+        TNW 2
+        APS
+
+        DUP
+        LDL $code_pool
+        SWP
+        LDC stmt_const_name_idx
+        ALD
+        LDL $code_pool
+        MSZ
+        MST
+
+        JMP .first_next
+
+      .first_is_const_value:
+        POP
+
+        DUP
+        LDC stmt_const_name_idx
+        ALD
+        STL $name
+
+        LDL $name
+        LD0
+        ALD
+        LDC .dot
+        INE .first_is_const_name_ok
+          LDL $current
+          LDL $name
+          TNW 2
+          STL $name
+        .first_is_const_name_ok:
+
+        LDL $const_pool
+        LDL $name
+        MCT
+        INZ .first_next
+
+        DUP
+        LDL $output
+        SWP
+        LDC const_value
+        LDL $const_pool
+        MSZ
+        TNW 2
+        SWP
+        LDC stmt_const_value_idx
+        ALD
+        TNW 2
+        APS
+
+        LDL $const_pool
+        LDL $name
+        LDL $const_pool
+        MSZ
+        MST
+
+        JMP .first_next
+
+    .first_is_label:
+      POP
+
+      DUP
+      LDC stmt_label_name_idx
+      ALD
+      LD0
+      ALD
+      LDC .dot
+      IEQ .first_is_label_local
+        ST0 $pos
+
+        DUP
+        LDC stmt_label_name_idx
+        ALD
+        STL $current
+
+        LDL $symbols
+        LDL $current
+        LD0
+        ANW
+        MST
+
+        LDL $code_pool
+        LDL $current
+        LDL $code_pool
+        MSZ
+        MST
+
+        JMP .first_next
+
+      .first_is_label_local:
+
+        DUP
+        LDL $labels
+        SWP
+        LDL $current
+        SWP
+        LDC stmt_label_name_idx
+        ALD
+        TNW 2
+        LDL $pos
+        MST
+
+        JMP .first_next
+
+    .first_is_inst:
+      POP
+
+      DUP
+      LDL $symbols
+      LDL $current
+      MLD
+      SWP
+
+      DUP
+      LDL $ops
+      SWP
+      LDC stmt_inst_op_idx
+      ALD
+      MLD
+      SWP
+      LDC stmt_inst_args_idx
+      ALD
+      TNW 2
+
+      APS
+
+      DUP
+      LDL $pos
+      INC 1
+      SWP
+      LDC stmt_inst_args_idx
+      ALD
+      ASZ
+      .arg_byte_size: 2
+      LDC .arg_byte_size
+      MUL
+      ADD
+      STL $pos
+
+      JMP .first_next
+
+    .first_next:
+      POP
+
+      LDL $idx
+      INC 1
+      STL $idx
+
+      JMP .first_loop
+  .first_end:
+
+  LDL $symbols
+  MKY
+
+  .scnd_loop:
+    DUP
+    ASZ
+    LDL $idx
+    IEQ .scnd_end
+
+    DUP
+    LDL $idx
+    ALD
+    STL $current
+
+    .inner_scnd_loop:
+
+    BRK 0x42 ; TODO
+
+    .inner_scnd_end:
+
+  .scnd_next:
+    LDL $idx
+    INC 1
+    STL $idx
+
+    JMP .scnd_loop
+  .scnd_end:
+  POP
+
+  LDL $output
   RET
-

@@ -17,13 +17,16 @@ class Argument(Enum):
 OPS = {o[3:]: opcodes.__dict__[o] for o in dir(opcodes) if o.startswith('OP_')}
 
 IDENT = r'\.?[A-Za-z_][A-Za-z0-9_\.\$\-]*'
-NUM_LIT = r'0x[0-9A-Fa-f]+|[0-9A-Fa-f]+h|[0-9]+d?'
+NUM_LIT = r'0x[0-9A-Fa-f]+|[0-9A-Fa-f]+h|-?[0-9]+d?'
+FLT_LIT = r'-?[0-9]+\.[0-9]*|-?\.[0-9]+'
 STR_LIT = r'"((?:\\"|.)*?)"'
+CHR_LIT = r"'(\\?.)'"
+COMMENTS = r'\s*(?:;.*)?$'
 
-CONST_RE = regex.compile(r'^(' + IDENT + r'):\s+(?:(native(?:\s+(' + IDENT + r'))?)|(' + NUM_LIT + r')|(?:' + STR_LIT + r'))\s*(?:;.*)?$')
-LABEL_RE = regex.compile(r'^(' + IDENT + r'):\s*(?:;.*)?$')
-ALIAS_RE = regex.compile(r'^\$(' + IDENT + r')\s+(' + NUM_LIT + r'|' + IDENT + r')\s*(?:;.*)?$')
-INSTRUCTION_RE = regex.compile(r'^(' + IDENT + r')(?:\s+(' + NUM_LIT + r'|\$?' + IDENT + r'))*\s*(?:;.*)?$')
+CONST_RE = regex.compile(r'^(' + IDENT + r'):\s+(?:(native(?:\s+(' + IDENT + r'))?)|(' + FLT_LIT + r')|(' + NUM_LIT + r')|' + CHR_LIT + r'|' + STR_LIT + r')' + COMMENTS)
+LABEL_RE = regex.compile(r'^(' + IDENT + r'):' + COMMENTS)
+ALIAS_RE = regex.compile(r'^\$(' + IDENT + r')\s+(' + NUM_LIT + r'|' + IDENT + r')' + COMMENTS)
+INSTRUCTION_RE = regex.compile(r'^(' + IDENT + r')(?:\s+(' + NUM_LIT + r'|\$?' + IDENT + r'))*' + COMMENTS)
 
 def read_lines(paths, mode='r'):
     for p in paths:
@@ -59,9 +62,13 @@ def read_stmts(lines):
             if const.group(2):
                 yield (Statement.CONST, const.group(1), Constant.CODE, (True, const.group(3) or const.group(1)))
             elif const.group(4) is not None:
-                yield (Statement.CONST, const.group(1), Constant.VALUE, parse_literal(const.group(4)))
+                yield (Statement.CONST, const.group(1), Constant.VALUE, float(const.group(4)))
             elif const.group(5) is not None:
-                yield (Statement.CONST, const.group(1), Constant.VALUE, bytes(const.group(5), 'utf-8').decode('unicode_escape'))
+                yield (Statement.CONST, const.group(1), Constant.VALUE, parse_literal(const.group(5)))
+            elif const.group(6) is not None:
+                yield (Statement.CONST, const.group(1), Constant.VALUE, ord(bytes(const.group(6), 'utf-8').decode('unicode_escape')[0]))
+            elif const.group(7) is not None:
+                yield (Statement.CONST, const.group(1), Constant.VALUE, bytes(const.group(7), 'utf-8').decode('unicode_escape'))
         else:
             label = LABEL_RE.match(line)
             if label:
@@ -103,7 +110,7 @@ def assemble(stmts, pool=None, reverse_pool=None):
                         pool[stmt[2], stmt[1]] = reverse_pool[stmt[2], stmt[3]]
                     else:
                         pool[stmt[2], stmt[1]] = code_idx
-                        reverse_pool[stmt[2], stmt[3]] = value_idx
+                        reverse_pool[stmt[2], stmt[3]] = code_idx
                         yield ((Constant.CODE, code_idx), stmt[3])
                         code_idx += 1
             elif stmt[2] == Constant.VALUE:

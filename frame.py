@@ -4,11 +4,12 @@ class Frame:
     def __init__(self, code, pc=0, operands=None, slots=None):
         self._code = code
         self._pc = pc
+        self._next_pc = pc
         self._operands = operands or list()
         self._slots = slots or list()
 
     def __repr__(self):
-        return 'Frame(code={}, pc={}, operands={}, slots={})'.format(repr(self._code), repr(self._pc), repr(self._operands), repr(self._slots))
+        return 'Frame(code={}, pc={}, next_pc={}, operands={}, slots={})'.format(repr(self._code), repr(self._pc), repr(self._next_pc), repr(self._operands), repr(self._slots))
 
     def __str__(self):
         pc = self.get_pc()
@@ -16,7 +17,7 @@ class Frame:
         inst = self.get_opcode_name()
         operands = '\n    '.join(str(i) + ': ' + repr(self._operands[i]) for i in range(len(self._operands)))
         slots = '\n    '.join(str(i) + ': ' + repr(self._slots[i]) for i in range(len(self._slots)))
-        return 'Frame:\n  idx: {}\n  pc: {}\n  next: {} [{}]\n  operands:\n    {}\n  slots:\n    {}'.format(self._code[0], pc, inst, repr(code[pc:pc + 6]), operands, slots)
+        return 'Frame:\n  symbol: {}\n  pc: {}\n  op: {} [{}]\n  operands:\n    {}\n  slots:\n    {}'.format(self._code[0], pc, inst, repr(code[pc:pc + 6]), operands, slots)
 
     def get_code(self):
         return self._code[1]
@@ -26,6 +27,12 @@ class Frame:
 
     def get_pc(self):
         return self._pc
+
+    def set_next_pc(self, pc):
+        self._next_pc = pc
+
+    def get_next_pc(self):
+        return self._next_pc
 
     def get_opcode(self):
         pc = self.get_pc()

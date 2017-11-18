@@ -80,6 +80,5 @@ OP_IIN = 0x38 # Pop 1 value and if null jump to program address
 OP_INN = 0x39 # Pop 1 value and if not null jump to program address
 
 # Debug
-OP_TRB = 0xCC # Start verbose mode
-OP_TRS = 0xDD # Stop verbose mode
+OP_ABK = 0xAA # Turn on/off step by step
 OP_BRK = 0xBB # Stop execution, display frame information and wait for continue

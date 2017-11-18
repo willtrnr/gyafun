@@ -273,7 +273,7 @@ ops[OP_DEC] = (dec, 1)
 # Jumps
 
 def jmp(frame, machine, address):
-    frame.set_pc(address)
+    frame.set_next_pc(address)
 ops[OP_JMP] = (jmp, 1)
 
 def ivk(frame, machine, idx, argc):
@@ -287,81 +287,80 @@ ops[OP_IVK] = (ivk, 2)
 def izr(frame, machine, address):
     val = frame.pop_operand()
     if val == 0:
-        frame.set_pc(address)
+        frame.set_next_pc(address)
 ops[OP_IZR] = (izr, 1)
 
 def inz(frame, machine, address):
     val = frame.pop_operand()
     if val != 0:
-        frame.set_pc(address)
+        frame.set_next_pc(address)
 ops[OP_INZ] = (inz, 1)
 
 def ieq(frame, machine, address):
     a = frame.pop_operand()
     b = frame.pop_operand()
     if b == a:
-        frame.set_pc(address)
+        frame.set_next_pc(address)
 ops[OP_IEQ] = (ieq, 1)
 
 def ine(frame, machine, address):
     a = frame.pop_operand()
     b = frame.pop_operand()
     if b != a:
-        frame.set_pc(address)
+        frame.set_next_pc(address)
 ops[OP_INE] = (ine, 1)
 
 def ilt(frame, machine, address):
     a = frame.pop_operand()
     b = frame.pop_operand()
     if b < a:
-        frame.set_pc(address)
+        frame.set_next_pc(address)
 ops[OP_ILT] = (ilt, 1)
 
 def ile(frame, machine, address):
     a = frame.pop_operand()
     b = frame.pop_operand()
     if b <= a:
-        frame.set_pc(address)
+        frame.set_next_pc(address)
 ops[OP_ILE] = (ile, 1)
 
 def igt(frame, machine, address):
     a = frame.pop_operand()
     b = frame.pop_operand()
     if b > a:
-        frame.set_pc(address)
+        frame.set_next_pc(address)
 ops[OP_IGT] = (igt, 1)
 
 def ige(frame, machine, address):
     a = frame.pop_operand()
     b = frame.pop_operand()
     if b >= a:
-        frame.set_pc(address)
+        frame.set_next_pc(address)
 ops[OP_IGE] = (ige, 1)
 
 def iin(frame, machine, address):
     val = frame.pop_operand()
     if val is None:
-        frame.set_pc(address)
+        frame.set_next_pc(address)
 ops[OP_IIN] = (iin, 1)
 
 def inn(frame, machine, address):
     val = frame.pop_operand()
     if val is not None:
-        frame.set_pc(address)
+        frame.set_next_pc(address)
 ops[OP_INN] = (inn, 1)
 
 # Debug
 
-def trb(frame, machine):
-    machine.set_trace(True)
-ops[OP_TRB] = (trb, 0)
-
-def trs(frame, machine):
-    machine.set_trace(False)
-ops[OP_TRS] = (trs, 0)
-
-def brk(frame, machine, ident):
-    print('Breakpoint: {}'.format(ident))
+def breakpoint(frame, machine, handler, args):
     print(frame)
     input('Press Enter to continue...')
-ops[OP_BRK] = (brk, 1)
+    handler(frame, machine, *args)
+
+def abk(frame, machine, is_active):
+    machine.set_interceptor(breakpoint if is_active else None)
+ops[OP_ABK] = (abk, 1)
+
+def brk(frame, machine):
+    machine.set_interceptor_once(breakpoint)
+ops[OP_BRK] = (brk, 0)

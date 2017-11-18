@@ -100,7 +100,7 @@ main:
     LDL $const_pool
     IVK assemble 4
 
-    BRK 0x42 ; TODO
+    BRK ; TODO
     POP
 
     LDL $idx
@@ -340,6 +340,7 @@ parse_arg:
     ASZ
     IVK str.substr 3
     MLD
+
     RET
 
   .try_literal:
@@ -347,36 +348,18 @@ parse_arg:
     IVK parse_literal 1
     DUP
     IIN .try_ident
+
     STL $value
-
-    LDC .arg_size
-    ANW
-
-    DUP
-    LD0
     LDC arg_literal
-    AST
-
-    DUP
-    LD1
     LDL $value
-    AST
+    TNW 2
 
     RET
 
   .try_ident:
-    LDC .arg_size
-    ANW
-
-    DUP
-    LD0
     LDC arg_ident
-    AST
-
-    DUP
-    LD1
     LDL $value
-    AST
+    TNW 2
 
     RET
 
@@ -983,7 +966,7 @@ assemble:
 
   LDL $symbols
   MKY
-
+  ST0 $idx
   .scnd_loop:
     DUP
     ASZ
@@ -997,7 +980,7 @@ assemble:
 
     .inner_scnd_loop:
 
-    BRK 0x42 ; TODO
+    BRK ; TODO
 
     .inner_scnd_end:
 

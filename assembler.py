@@ -33,8 +33,10 @@ INSTRUCTION_RE = regex.compile(r'^(' + IDENT + r')(?:\s+(' + NUM_LIT + r'|\$?' +
 def read_lines(paths, mode='r'):
     for p in paths:
         with open(p, mode) as f:
+            l = 1
             for line in f:
-                yield line
+                yield (l, line)
+                l += 1
 
 def parse_literal(value):
     if value.startswith('0x'):
@@ -57,7 +59,7 @@ def parse_arg(arg, aliases=dict()):
 
 def read_stmts(lines):
     aliases = dict()
-    for src_line in lines:
+    for line_no, src_line in lines:
         line = src_line.strip()
         const = CONST_RE.match(line)
         if const:
@@ -83,7 +85,7 @@ def read_stmts(lines):
                     inst = INSTRUCTION_RE.match(line)
                     if inst:
                         args = [parse_arg(a, aliases) for a in inst.captures(2)] if inst.captures(2) else list()
-                        yield (Statement.INST, inst.group(1).upper(), args)
+                        yield (Statement.INST, inst.group(1).upper(), args, line_no)
 
 def assemble(stmts, pool=None, reverse_pool=None):
     pool = pool or dict()
@@ -135,14 +137,16 @@ def assemble(stmts, pool=None, reverse_pool=None):
                 pool[Constant.CODE, current] = code_idx
                 code_idx += 1
         elif stmt[0] == Statement.INST:
-            symbols[current].append((OPS[stmt[1]], stmt[2]))
+            symbols[current].append((OPS[stmt[1]], stmt[2], (pos, stmt[3])))
             pos += 1 + len(stmt[2]) * 2
 
     # Second pass: output code
     for symbol, code in symbols.items():
         buf = b''
-        for op, args in code:
+        srcmap = []
+        for op, args, posmap in code:
             buf += op.to_bytes(1, byteorder='little')
+            srcmap.append(posmap)
             for arg in args:
                 if arg[0] == Argument.LITERAL:
                     buf += arg[1].to_bytes(2, byteorder='little')
@@ -156,11 +160,11 @@ def assemble(stmts, pool=None, reverse_pool=None):
                         elif (Constant.CODE, name) in pool:
                             buf += pool[Constant.CODE, name].to_bytes(2, byteorder='little')
                         else:
-                            pool[Constant.CODE, arg[1]] = code_idx
+                            pool[Constant.CODE, name] = code_idx
                             buf += code_idx.to_bytes(2, byteorder='little')
                             code_idx += 1
         idx = pool[Constant.CODE, symbol]
-        yield ((Constant.CODE, idx), (False, buf))
+        yield ((Constant.CODE, idx), (False, buf, srcmap))
         yield ((Constant.SYMBOL, symbol), (Constant.CODE, idx))
 
 if __name__ == '__main__':

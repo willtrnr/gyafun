@@ -7,7 +7,7 @@ parse_hex:
   .c0: 0x30
   .c9: 0x39
   .cA: 0x41
-  .cZ: 0x5A
+  .cF: 0x46
   .ca: 0x61
 
   $value 0
@@ -37,6 +37,10 @@ parse_hex:
     LDC .cA
     IGE .is_letter
       DUP
+      LDC .c0
+      ILT .error
+
+      DUP
       LDC .c9
       IGT .error
 
@@ -52,7 +56,11 @@ parse_hex:
 
     .is_letter:
       DUP
-      LDC .cZ
+      LDC .cA
+      ILT .error
+
+      DUP
+      LDC .cF
       IGT .error
 
       LDC .cA

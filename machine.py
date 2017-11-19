@@ -26,11 +26,11 @@ class Machine:
         return True
 
     def invoke(self, code_idx, args=[]):
-        is_native, code = self.get_constant(Constant.CODE, code_idx)
+        is_native, code, srcmap = self.get_constant(Constant.CODE, code_idx)
         if is_native:
             native.handlers[code](self.top_frame(), self, *args)
         else:
-            self._stack.append(Frame((code_idx, code), slots=[a for a in args]))
+            self._stack.append(Frame((code_idx, code, srcmap), slots=[a for a in args]))
 
     def run(self, proc, *args):
         symbol = self.get_constant(Constant.SYMBOL, proc)

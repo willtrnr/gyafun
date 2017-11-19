@@ -13,11 +13,12 @@ class Frame:
 
     def __str__(self):
         pc = self.get_pc()
+        line = self.get_line_number()
         code = self.get_code()
         inst = self.get_opcode_name()
         operands = '\n    '.join(str(i) + ': ' + repr(self._operands[i]) for i in range(len(self._operands)))
         slots = '\n    '.join(str(i) + ': ' + repr(self._slots[i]) for i in range(len(self._slots)))
-        return 'Frame:\n  symbol: {}\n  pc: {}\n  op: {} [{}]\n  operands:\n    {}\n  slots:\n    {}'.format(self._code[0], pc, inst, repr(code[pc:pc + 6]), operands, slots)
+        return 'Frame:\n  symbol: {}\n  pc: {}\n  op: {} [{}]\n  line: {}\n  operands:\n    {}\n  slots:\n    {}'.format(self._code[0], pc, inst, repr(code[pc:pc + 7]), line or '?', operands, slots)
 
     def get_code(self):
         return self._code[1]
@@ -69,3 +70,6 @@ class Frame:
                 if o.startswith('OP_') and opcodes.__dict__[o] == op:
                     return o[3:]
         return op
+
+    def get_line_number(self):
+        return self._code[2].get(self._pc)

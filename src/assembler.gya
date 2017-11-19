@@ -6,12 +6,19 @@
 io.printf: native
 io.fopen: native
 io.freadline: native
+io.fclose: native
 regex.compile: native
 regex.match: native
 regex.replace: native
 regex.split: native
 str.substr: native
 str.unescape: native
+int.to_bytes: native
+pickle.dump: native
+
+;; Sizes
+op_byte_size: 1
+arg_byte_size: 2
 
 ;; Statement type enum
 stmt_const: 0x01
@@ -48,8 +55,15 @@ const_type_idx: 0
 const_id_idx: 1
 const_value_idx: 2
 
+;; Arg structure
+arg_size: 3
+arg_type_idx: 0
+arg_value_idx: 1
+
 ;; Useful
 empty_str: ""
+cash: 0x24 ; $
+dot: 0x2E ; .
 
 main:
 
@@ -59,8 +73,9 @@ main:
   $ops 2
   $code_pool 3
   $const_pool 4
+  $output 5
 
-  $idx 5
+  $idx 6
 
   ;; Check if we have enough arguments
   LDL $argc
@@ -78,6 +93,10 @@ main:
   MNW
   STL $const_pool
 
+  LD0
+  ANW
+  STL $output
+
   ST1 $idx
   .loop:
     LDL $idx
@@ -92,6 +111,9 @@ main:
     IVK io.fopen 2
     DUP
     IIN .error_not_open
+    DUP
+    LDL $output
+    SWP
     IVK read_lines 1
     IVK read_statements 1
 
@@ -100,7 +122,11 @@ main:
     LDL $const_pool
     IVK assemble 4
 
-    BRK ; TODO
+    ADD ; Overloaded, assuming Python
+
+    STL $output
+
+    IVK io.fclose 1
     POP
 
     LDL $idx
@@ -109,6 +135,19 @@ main:
 
     JMP .loop
   .end:
+
+  .aout: "aa.out"
+  LDC .aout
+  .aout_mode: "w"
+  LDC .aout_mode
+  IVK io.fopen 2
+  DUP
+  LDL $output
+  SWP
+  IVK pickle.dump 2
+  POP
+  IVK io.fclose 1
+  POP
 
   LD0
   RET
@@ -315,7 +354,6 @@ parse_literal:
 
 parse_arg:
 
-  .cash: 0x24
   .arg_size: 2
 
   $value 0
@@ -330,7 +368,7 @@ parse_arg:
     LDL $value
     LD0
     ALD
-    LDC .cash
+    LDC cash
     INE .try_literal
 
     LDL $aliases
@@ -348,6 +386,7 @@ parse_arg:
     IVK parse_literal 1
     DUP
     IIN .try_ident
+    DUP
 
     STL $value
     LDC arg_literal
@@ -484,6 +523,7 @@ read_statements:
         DUP
         LDC stmt_const_value_idx
 
+        ;; FIXME this should produce tuple, not list
         LDC .const_code_size
         ANW
 
@@ -714,7 +754,6 @@ read_statements:
   RET
 
 assemble:
-  .dot: 0x2E
 
   $stmts 0
   $ops 1
@@ -727,7 +766,9 @@ assemble:
   $current 7
   $pos 8
   $idx 9
-  $name 10
+  $subidx 10
+  $name 11
+  $buffer 12
 
   LD0
   ANW
@@ -742,7 +783,6 @@ assemble:
   STN $current
 
   ST0 $pos
-
   ST0 $idx
   .first_loop:
     LDL $idx
@@ -837,7 +877,7 @@ assemble:
         LDL $name
         LD0
         ALD
-        LDC .dot
+        LDC dot
         INE .first_is_const_name_ok
           LDL $current
           LDL $name
@@ -879,7 +919,7 @@ assemble:
       ALD
       LD0
       ALD
-      LDC .dot
+      LDC dot
       IEQ .first_is_label_local
         ST0 $pos
 
@@ -893,6 +933,11 @@ assemble:
         LD0
         ANW
         MST
+
+        LDL $code_pool
+        LDL $current
+        MCT
+        INZ .first_next
 
         LDL $code_pool
         LDL $current
@@ -946,8 +991,7 @@ assemble:
       LDC stmt_inst_args_idx
       ALD
       ASZ
-      .arg_byte_size: 2
-      LDC .arg_byte_size
+      LDC arg_byte_size
       MUL
       ADD
       STL $pos
@@ -978,13 +1022,220 @@ assemble:
     ALD
     STL $current
 
-    .inner_scnd_loop:
+    LDL $symbols
+    LDL $current
+    MLD
 
-    BRK ; TODO
+    STN $buffer
+    ST0 $subidx
+    .code_loop:
+      DUP
+      ASZ
+      LDL $subidx
+      IEQ .code_end
 
-    .inner_scnd_end:
+      DUP
+      LDL $subidx
+      ALD
+
+      DUP
+      LD0
+      TLD
+      LDC op_byte_size
+      IVK int.to_bytes 2
+
+      LDL $buffer
+      IIN .first_buffer_push
+        LDL $buffer
+        SWP
+        ADD ; Overloaded add, assumes Python
+      .first_buffer_push:
+      STL $buffer
+
+      DUP
+      LDL $subidx
+      SWP ; Stash subidx on the stack
+      LD1
+      TLD
+
+      ST0 $subidx
+      .args_loop:
+        DUP
+        ASZ
+        LDL $subidx
+        IEQ .args_end
+
+        DUP
+        LDL $subidx
+        ALD
+
+        DUP
+        LDC arg_type_idx
+        TLD
+        LDC arg_literal
+        IEQ .arg_is_literal
+
+        DUP
+        LDC arg_type_idx
+        TLD
+        LDC arg_ident
+        IEQ .arg_is_ident
+
+        JMP .args_next
+
+        .arg_is_literal:
+          DUP
+          LDC arg_value_idx
+          TLD
+          LDC arg_byte_size
+          IVK int.to_bytes 2
+
+          LDL $buffer
+          SWP
+          ADD ; Overloaded add, assumes Python
+          STL $buffer
+
+          JMP .args_next
+
+        .arg_is_ident:
+          DUP
+          LD1
+          TLD
+          STL $name
+
+          LDL $name
+          LD0
+          ALD
+          LDC dot
+          INE .arg_ident_name_ok
+            LDL $current
+            LDL $name
+            TNW 2
+            STL $name
+          .arg_ident_name_ok:
+
+          LDL $labels
+          LDL $name
+          MCT
+          INZ .arg_ident_is_label
+
+          LDL $const_pool
+          LDL $name
+          MCT
+          INZ .arg_ident_is_value
+
+          LDL $code_pool
+          LDL $name
+          MCT
+          INZ .arg_ident_is_code
+
+          JMP .arg_ident_is_late_code
+
+          .arg_ident_is_label:
+            LDL $buffer
+            LDL $labels
+            LDL $name
+            MLD
+            LDC arg_byte_size
+            IVK int.to_bytes 2
+            ADD ; Overloaded, assumes Python
+            STL $buffer
+
+            JMP .args_next
+
+          .arg_ident_is_value:
+            LDL $buffer
+            LDL $const_pool
+            LDL $name
+            MLD
+            LDC arg_byte_size
+            IVK int.to_bytes 2
+            ADD ; Overloaded, assumes Python
+            STL $buffer
+
+            JMP .args_next
+
+          .arg_ident_is_code:
+            LDL $buffer
+            LDL $code_pool
+            LDL $name
+            MLD
+            LDC arg_byte_size
+            IVK int.to_bytes 2
+            ADD
+            STL $buffer
+
+            JMP .args_next
+
+          .arg_ident_is_late_code:
+            LDL $buffer
+            LDL $code_pool
+            MSZ
+            LDC arg_byte_size
+            IVK int.to_bytes 2
+            ADD ; Overloaded add, assumes Python
+            STL $buffer
+
+            LDL $code_pool
+            LDL $name
+            LDL $code_pool
+            MSZ
+            MST
+
+            JMP .args_next
+
+      .args_next:
+        POP
+
+        LDL $subidx
+        INC 1
+        STL $subidx
+
+        JMP .args_loop
+      .args_end:
+
+      POP ; Restore subidx
+      STL $subidx
+
+    .code_next:
+      POP
+
+      LDL $subidx
+      INC 1
+      STL $subidx
+
+      JMP .code_loop
+    .code_end:
+
+    LDL $output
+    LDC const_code
+    LDL $code_pool
+    LDL $current
+    MLD
+    TNW 2
+    LD0
+    LDL $buffer
+    LD0
+    ANW
+    TNW 3
+    TNW 2
+    APS
+
+    LDL $output
+    LDC const_symbol
+    LDL $current
+    TNW 2
+    LDC const_code
+    LDL $code_pool
+    LDL $current
+    MLD
+    TNW 2
+    TNW 2
+    APS
 
   .scnd_next:
+    POP
+
     LDL $idx
     INC 1
     STL $idx

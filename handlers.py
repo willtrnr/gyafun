@@ -352,15 +352,15 @@ ops[OP_INN] = (inn, 1)
 
 # Debug
 
-def breakpoint(frame, machine, handler, args):
+def _breakpoint(frame, machine, handler, args):
     print(frame)
     input('Press Enter to continue...')
     handler(frame, machine, *args)
 
 def abk(frame, machine, is_active):
-    machine.set_interceptor(breakpoint if is_active else None)
+    machine.set_interceptor(_breakpoint if is_active else None)
 ops[OP_ABK] = (abk, 1)
 
 def brk(frame, machine):
-    machine.set_interceptor_once(breakpoint)
+    machine.set_interceptor_once(_breakpoint)
 ops[OP_BRK] = (brk, 0)
